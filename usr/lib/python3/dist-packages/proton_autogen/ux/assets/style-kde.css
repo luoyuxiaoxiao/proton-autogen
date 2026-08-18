@@ -26,6 +26,12 @@ textview {
     color: @kde-text2;
 }
 
+.form-label {
+    color: @kde-text2;
+    font-weight: 600;
+    font-size: 13px;
+}
+
 
 /* =========================================================
    FENETRE
@@ -369,7 +375,8 @@ label.home-label {
 
 .badge {
     border-radius:6px;
-    padding:4px 10px;
+    border-radius: 12px;
+    padding: 4px 8px;
     background: #eef2f7;
     color: @kde-text;
     border: 1px solid @kde-border;
@@ -680,4 +687,29 @@ combobox popover label,
 dropdown popover label,
 popover label {
     color: @kde-text;
+}
+
+/* GAME ICON */
+.game-icon {
+
+    min-width:64px;
+    min-height:64px;
+
+    border-radius:14px;
+
+    background:
+    rgba(255,255,255,0.85);
+    box-shadow:
+    0 0 10px rgba(90, 100, 115,0.15);
+
+    padding:4px;
+}
+
+.game-icon:hover {
+
+    background:
+    rgba(255,255,255,0.35);
+
+    box-shadow:
+    0 0 10px rgba(90, 100, 115,0.35);
 }

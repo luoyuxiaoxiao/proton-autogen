@@ -34,7 +34,7 @@ def _game_id(exe_path: str):
 
 def get_game_config_path(exe_path: str):
     gid = _game_id(exe_path)
-    return os.path.join(CONFIG_DIR, f"{gid}.json"), gid
+    return Path(CONFIG_DIR) / f"{gid}.json", gid
 
 # -- Save game for UX
 def deep_merge(base: dict, updates: dict):
@@ -47,13 +47,11 @@ def deep_merge(base: dict, updates: dict):
 
 def load_game_config(exe_path):
     game_id = _game_id(exe_path)
-    path = os.path.expanduser(
-        f"~/.config/proton-autogen/games/{game_id}.json"
-    )
+    path = Path(CONFIG_DIR) / f"{game_id}.json"
 
     #logger.info(f"Loading config candidate: {path}")
 
-    if os.path.exists(path):
+    if path.exists():
         #logger.info("Config found")
         with open(path, "r") as f:
             config = json.load(f)
@@ -61,7 +59,7 @@ def load_game_config(exe_path):
         config = normalize_game_config(config)
 
         # Ajout du chemin réel du fichier de config
-        config["config_path"] = path
+        config["config_path"] = str(path)
 
         return config
 
@@ -74,9 +72,9 @@ def save_game_config(data: dict):
         raise ValueError("Missing path in data")
 
     config_path, gid = get_game_config_path(exe_path)
-
+    logger.info(f"Saved config : {config_path}")
     # load existing config
-    if os.path.exists(config_path):
+    if config_path.exists():
         with open(config_path, "r") as f:
             base = json.load(f)
     else:
@@ -88,6 +86,12 @@ def save_game_config(data: dict):
     # merge safely
     merged = deep_merge(base, data)
 
+    # ENV est une configuration complète :
+    # ce qui est présent dans data["env"] devient la vérité.
+    # Cela permet notamment de supprimer une variable existante.
+    if "env" in data:
+        merged["env"] = dict(data["env"])
+
     # IMPORTANT: ensure required fields exist
     merged.setdefault("features", {})
     merged.setdefault("prefix", {"name": "main", "path": ""})
@@ -95,26 +99,13 @@ def save_game_config(data: dict):
     # ADD STATS AND FAV
     merged = normalize_game_config(merged)
 
-    with open(config_path, "w") as f:
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    tmp_path = config_path.with_suffix(".json.tmp")
+
+    with open(tmp_path, "w") as f:
         json.dump(merged, f, indent=2)
 
+    tmp_path.replace(config_path)
+
     return merged
-
-def save_game_config_v1(data: dict):
-    if not isinstance(data, dict):
-        return
-
-    exe_path = data.get("path")
-    if not exe_path:
-        return
-
-    config_path, gid = get_game_config_path(exe_path)
-
-    data["id"] = gid
-
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-
-    with open(config_path, "w") as f:
-        json.dump(data, f, indent=2)
-
-    logger.info(f"Saved config : {config_path}")

@@ -1,12 +1,104 @@
+import os
 from proton_autogen.profiles.base import init_env
+from proton_autogen.utils.logger import StructuredLogger
 
+#-------------------------- Init Log -------------------
+logger = StructuredLogger("proton-autogen.profiles.dx11")
+
+LEGACY_RENDERER_RULES = {
+
+    "ref_gl.dll": {
+        "profile": "quake_opengl",
+        "mesa_year": "2002"
+    },
+
+    "ref_gl1.dll": {
+        "profile": "quake_opengl",
+        "mesa_year": "2002"
+    },
+
+    "pvrgl.dll": {
+        "profile": "powervr",
+        "mesa_year": "2001"
+    },
+
+    "pvrgl32.dll": {
+        "profile": "powervr",
+        "mesa_year": "2001"
+    }
+}
+
+
+def detect_legacy_renderer(exe_path):
+    legacy_renderers = [
+        "ref_gl.dll",
+        "ref_gl1.dll",
+        "pvrgl.dll",
+        "pvrgl32.dll",
+        "opengl32.dll"
+    ]
+
+    directory = os.path.dirname(exe_path)
+
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.lower() in legacy_renderers:
+                print(f"[proton-autogen] Legacy renderer found: {file}")
+                return file.lower()
+
+    return None
+# ---------------------------------------------------
+# 2. DETECT VN ENGINE
+# ---------------------------------------------------
+def detect_vn_engine(exe_path):
+    """
+    Detect whether the game directory contains
+    known Visual Novel engine signatures.
+
+    Returns:
+        True if detected, otherwise False.
+    """
+
+    if not exe_path:
+        return False
+
+    directory = os.path.dirname(exe_path)
+
+    signatures = (
+        "renpy",
+        "krkr",
+        "krkrz",
+        "xp3",
+        "tyrano",
+        "rgss",
+        "rpgmaker",
+        "wolf",
+    )
+
+    try:
+        for root, dirs, files in os.walk(directory):
+            for entry in dirs + files:
+                entry = entry.lower()
+
+                if any(signature in entry for signature in signatures):
+                    logger.info(
+                        f"[proton-autogen] Visual Novel detected: {entry}"
+                    )
+                    return True
+
+    except OSError as e:
+        logger.warning(
+            f"[proton-autogen] VN detection failed: {e}"
+        )
+
+    return False
 # ---------------------------------------------------
 # 2. DX11 PROFILE (most games)
 # ---------------------------------------------------
-def env_dx11():
+def env_dx11(prefix=None, proton_path=None, exe_path=None):
     env = init_env()
 
-    print("[proton-autogen] PROFILE: DX11")
+    logger.info("[proton-autogen] PROFILE: DX11")
     env["PROTON_USE_XALIA"] = "0"
 
     env["PROTON_NO_ESYNC"] = "0"
@@ -25,12 +117,46 @@ def env_dx11():
     env["vblank_mode"] = "0"
     env["mesa_glthread"] = "true"
 
+    # -----------------------------------------
+    # Legacy OpenGL detection
+    # -----------------------------------------
+    if exe_path :
+        renderer = detect_legacy_renderer(exe_path)
+        if renderer:
+            logger.info(f"[proton-autogen] Applying OpenGL compatibility fix: {renderer}")
+
+            rules = LEGACY_RENDERER_RULES.get(renderer)
+            if rules:
+                logger.info("Legacy mouse/input")
+                env["SDL_MOUSE_RELATIVE_MODE"] = "1"
+                env["WINE_MOUSE_WARP"] = "0"
+                env["PROTON_OLD_GL_STRING"] = "1"
+                env["MESA_EXTENSION_MAX_YEAR"] = rules["mesa_year"]
+
+    if exe_path and detect_vn_engine(exe_path):
+        logger.info(
+            "[proton-autogen] Visual Novel detected"
+        )
+
+        # Visual Novel settings here
+        # Japanese locale / encoding compatibility
+        # env["LC_ALL"] = "ja_JP.UTF-8"
+        # Japanese locale / encoding compatibility
+        # env["LANG"] = "ja_JP.UTF-8"
+        # Explicitly disable FSR4 for VN
+        env["PROTON_FSR4_UPGRADE"] = "0"
+        env["PROTON_FSR4_RDNA3_UPGRADE"] = "0"
+        env["PROTON_FSR4_INDICATOR"] = "0"
+        logger.info(
+            "[proton-autogen] FSR4 disabled for Visual Novel"
+        )
+
     return env
 
-def env_dx11BNet():
+def env_dx11BNet(prefix=None, proton_path=None, exe_path=None):
     env = init_env()
 
-    print("[proton-autogen] PROFILE: DX11 Battle.net")
+    logger.info("[proton-autogen] PROFILE: DX11 Battle.net")
 
     env["PROTON_USE_XALIA"] = "0"
 

@@ -3,16 +3,31 @@ import os
 import json
 from pathlib import Path
 from proton_autogen.utils.logger import StructuredLogger
-from proton_autogen.config import VERSION, CONFIG_FILE, CONFIG_DIR, PREFIX_DIR, PREFIX_DIR_PATH
+from proton_autogen.config import VERSION, CONFIG_FILE, CONFIG_DIR, PREFIX_DIR, PREFIX_DIR_PATH, load_prefix_dir
 from proton_autogen.loader import get_game_config_path
 from proton_autogen.profiles.init import detect_exe_type, choose_profile
 from proton_autogen.loader import load_game_config
-from proton_autogen.core import make_output_path, PREFIX_DIR_PATH
+from proton_autogen.core import make_output_path
 from proton_autogen.diag import find_all_protons, find_proton
 
 import uuid
 
 logger = StructuredLogger("proton-autogen.editor")
+
+SYSTEM_PREFIXES = (
+    "main",
+    "shared",
+    "auto",
+    "custom",
+    "Proton Custom",
+)
+
+GPU_MODES = (
+    "auto",
+    "safe",
+    "balanced",
+    "performance",
+)
 
 
 def choose_proton():
@@ -63,7 +78,7 @@ def choose_proton():
 
 
 def list_prefixes():
-    root = os.path.expanduser(PREFIX_DIR)
+    root = load_prefix_dir()
 
     if not os.path.isdir(root):
         return []
@@ -86,21 +101,15 @@ def list_prefixes():
 
 #Liste prefixes for UX:
 def list_prefixes_ux():
-    root = os.path.expanduser(PREFIX_DIR)
+    root = load_prefix_dir()
 
-    prefixes = [
-        "main",
-        "shared",
-        "auto",
-        "custom",
-        "Proton Custom",
-    ]
+    prefixes = list(SYSTEM_PREFIXES)
 
     if os.path.isdir(root):
         for name in sorted(os.listdir(root)):
             path = os.path.join(root, name)
 
-            if os.path.isdir(path) and name not in ("main", "shared", "auto", "custom", "Proton Custom"):
+            if os.path.isdir(path) and name not in SYSTEM_PREFIXES:
                 prefixes.append(name)
 
     return prefixes
@@ -108,7 +117,7 @@ def list_prefixes_ux():
 
 def choose_prefix(exe_path: str):
     prefixes = list_prefixes()
-    root = os.path.expanduser(PREFIX_DIR)
+    root = load_prefix_dir()
 
     print("\nAvailable prefixes:\n")
 
@@ -129,7 +138,7 @@ def choose_prefix(exe_path: str):
             if not name:
                 #name = f"auto-{uuid.uuid4().hex[:8]}"
                 # choix automatique pour UI
-                root = PREFIX_DIR_PATH
+                root = load_prefix_dir()
                 path, name = make_output_path(exe_path, root)
 
             path = os.path.join(root, name)
@@ -177,30 +186,11 @@ def find_existing_prefix_for_game(exe_path: str):
     # Compatibilité anciens fichiers
     if "path" not in prefix:
         prefix["path"] = os.path.join(
-            os.path.expanduser(PREFIX_DIR),
+            load_prefix_dir(),
             prefix["name"]
         )
 
     return prefix
-
-def find_existing_prefix_for_game_v1(exe_path: str):
-
-    cfg_path, _ = get_game_config_path(exe_path)
-
-    print("Checking config:", cfg_path)
-
-    try:
-        cfg = load_game_config(exe_path)
-
-    except (json.JSONDecodeError, OSError) as e:
-        print(f"Invalid config ignored: {cfg_path} ({e})")
-        return None
-
-    if not isinstance(cfg, dict):
-        return None
-
-    return cfg.get("prefix")
-
 
 # add game for UX
 
@@ -238,7 +228,7 @@ def add_game_ux(exe_path: str, prefix=None):
 
         else:
             # choix automatique pour UI
-            root = PREFIX_DIR_PATH
+            root = load_prefix_dir()
             path, name = make_output_path(exe_path, root)
             prefix = {
                 "name": name,
@@ -283,7 +273,9 @@ def add_game_ux(exe_path: str, prefix=None):
 
         "features": {
             "mangohud": False,
+            "fps_limit": 60,
             "gamemode": False,
+            "gamescope": False,
             "xalia": None,
             "gpu": "auto"
         },
@@ -446,7 +438,9 @@ def add_game(exe_path: str):
 
         "features": {
             "mangohud": False,
+            "fps_limit": 60,
             "gamemode": False,
+            "gamescope": False,
             "xalia": None,
             "gpu": "auto"
         },
@@ -466,12 +460,12 @@ def add_game(exe_path: str):
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
-    print("[proton-autogen] Game added:")
-    print(f"  name     : {config['name']}")
-    print(f"  id       : {gid}")
-    print(f"  profile  : {exe_type}")
-    print(f"  prefix   : {prefix['name']}")
-    print(f"  config   : {config_path}")
+    logger.info("[proton-autogen] Game added:")
+    logger.info(f"  name     : {config['name']}")
+    logger.info(f"  id       : {gid}")
+    logger.info(f"  profile  : {exe_type}")
+    logger.info(f"  prefix   : {prefix['name']}")
+    logger.info(f"  config   : {config_path}")
 
 
 # -- Save game for UI
@@ -488,7 +482,7 @@ def edit_game_ui(exe_path: str):
     config_path, gid = get_game_config_path(exe_path)
 
     if not os.path.exists(config_path):
-        print("[proton-autogen] Game not registered.")
+        logger.info("[proton-autogen] Game not registered.")
         return
 
     with open(config_path, "r") as f:
@@ -497,13 +491,17 @@ def edit_game_ui(exe_path: str):
     while True:
         print("\n=== Edit Game ===")
         current_env_profile = config.get("env_profile") or config.get("exe_type")
+        custom_env_count = len(config.get("env", {}) or {})
         print(f"1) Profile    : {current_env_profile}")
         print(f"2) Proton     : {os.path.basename(config['proton'])}")
         print(f"3) Prefix     : {config['prefix']['name']}")
-        print(f"4) MangoHud   : {config['features']['mangohud']}")
-        print(f"5) GameMode   : {config['features']['gamemode']}")
-        print(f"6) GPU Mode   : {config['features'].get('gpu', 'auto')}")
-        print("7) Save & Quit")
+        print(f"4) MangoHud   : {config['features'].get('mangohud', False)}")
+        print(f"5) GameMode   : {config['features'].get('gamemode', False)}")
+        print(f"6) Gamescope  : {config['features'].get('gamescope', False)}")
+        print(f"7) GPU Mode   : {config['features'].get('gpu', 'auto')}")
+        print(f"8) FPS limit  : {config['features'].get('fps_limit', 60)}")
+        print(f"9) Env vars   : {custom_env_count} defined")
+        print("10) Save & Quit")
         print("0) Cancel")
 
         choice = input("\nSelection: ").strip()
@@ -516,8 +514,10 @@ def edit_game_ui(exe_path: str):
 
             if profile is None:
                 config["env_profile"] = detect_exe_type(exe_path)
+                config["exe_type"] = detect_exe_type(exe_path)
             else:
                 config["env_profile"] = profile
+                config["exe_type"] = profile
 
         elif choice == "2":
             proton = choose_proton()
@@ -545,29 +545,133 @@ def edit_game_ui(exe_path: str):
             config["features"]["gamemode"] = not current
 
         elif choice == "6":
-            modes = ["auto", "safe", "balanced", "performance"]
+            current = config["features"].get("gamescope", False)
+            config["features"]["gamescope"] = not current
 
+        elif choice == "7":
             current = config["features"].get("gpu", "auto")
 
             print("\nGPU mode:")
-            for i, mode in enumerate(modes, 1):
+            for i, mode in enumerate(GPU_MODES, 1):
                 marker = "*" if mode == current else " "
                 print(f"{i}) [{marker}] {mode}")
 
             sel = input("Selection: ").strip()
 
             if sel in ("1", "2", "3", "4"):
-                config["features"]["gpu"] = modes[int(sel) - 1]
+                config["features"]["gpu"] = GPU_MODES[int(sel) - 1]
 
-        elif choice == "7":
+        elif choice == "8":
+            _edit_fps_limit(config)
+
+        elif choice == "9":
+            _edit_custom_env(config)
+
+        elif choice == "10":
             with open(config_path, "w") as f:
                 json.dump(config, f, indent=2)
 
-            print("[proton-autogen] Configuration updated.")
+            logger.info("Configuration updated.")
             return
 
         elif choice == "0":
             print("[proton-autogen] Cancelled.")
+            return
+
+        else:
+            print("Invalid selection.")
+
+
+# -----------------------------
+# FPS LIMIT (CLI)
+# -----------------------------
+def _edit_fps_limit(config: dict) -> None:
+    """
+    Prompt for a new MangoHud fps_limit value (used only when MangoHud is
+    enabled, but stored regardless so it's ready as soon as it's turned on).
+    """
+    current = config["features"].get("fps_limit", 60)
+
+    if not config["features"].get("mangohud", False):
+        print("\n(Note: MangoHud is currently disabled, this value will be ignored until it's enabled)")
+
+    raw = input(f"\nFPS limit [{current}] (empty = keep current, 0 = unlimited): ").strip()
+
+    if not raw:
+        return
+
+    try:
+        value = int(raw)
+    except ValueError:
+        print("Invalid number, keeping current value.")
+        return
+
+    if value < 0:
+        print("FPS limit cannot be negative, keeping current value.")
+        return
+
+    config["features"]["fps_limit"] = value
+    print(f"FPS limit set to {value}.")
+
+
+# -----------------------------
+# CUSTOM ENVIRONMENT VARIABLES (CLI)
+# -----------------------------
+def _edit_custom_env(config: dict) -> None:
+    """
+    Small submenu to list / add / remove custom environment variables
+    stored under config["env"] (applied at launch, see core.run_game_proton).
+    """
+    config.setdefault("env", {})
+
+    while True:
+        env = config["env"]
+
+        print("\n--- Custom environment variables ---")
+        if env:
+            for key, value in env.items():
+                print(f"  {key}={value}")
+        else:
+            print("  (none defined)")
+
+        print("\n[a] Add / update a variable")
+        print("[r] Remove a variable")
+        print("[b] Back")
+
+        choice = input("\nSelection: ").strip().lower()
+
+        if choice == "a":
+            raw = input("Enter as KEY=VALUE: ").strip()
+
+            if "=" not in raw:
+                print("Invalid format, expected KEY=VALUE.")
+                continue
+
+            key, _, value = raw.partition("=")
+            key = key.strip()
+            value = value.strip()
+
+            if not key or not key.replace("_", "").isalnum() or key[0].isdigit():
+                print(f"Invalid variable name: '{key}'")
+                continue
+
+            env[key] = value
+            print(f"Set {key}={value}")
+
+        elif choice == "r":
+            if not env:
+                print("Nothing to remove.")
+                continue
+
+            key = input("Variable name to remove: ").strip()
+
+            if key in env:
+                del env[key]
+                print(f"Removed {key}.")
+            else:
+                print(f"'{key}' not found.")
+
+        elif choice == "b":
             return
 
         else:

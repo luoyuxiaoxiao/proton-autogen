@@ -1,13 +1,17 @@
 
 from proton_autogen.profiles.base import init_env
+from proton_autogen.utils.logger import StructuredLogger
+
+#-------------------------- Init Log -------------------
+logger = StructuredLogger("proton-autogen.profiles.desktop")
 #-----------------------------------------------------------
 # 7. PROFILE DESKTOP
 #-----------------------------------------------------------
 
-def env_desktop():
+def env_desktop(prefix=None, proton_path=None, exe_path=None):
     env = init_env()
 
-    print("[proton-autogen] PROFILE: DESKTOP")
+    logger.info("[proton-autogen] PROFILE: DESKTOP")
     env["PROTON_USE_XALIA"] = "0"
 
     env["PROTON_NO_ESYNC"] = "1"
@@ -26,9 +30,9 @@ def env_desktop():
 
 
 
-def env_win95():
+def env_win95(prefix=None, proton_path=None, exe_path=None):
     env = init_env()
-    print("[proton-autogen] PROFILE: Win 95")
+    logger.info("[proton-autogen] PROFILE: Win 95")
 
     env["PROTON_USE_XALIA"] = "0"
     env["PROTON_USE_WINED3D"] = "1"
@@ -48,9 +52,9 @@ def env_win95():
     return env
 
 
-def env_win95Beta():
+def env_win95Beta(prefix=None, proton_path=None, exe_path=None):
     env = init_env()
-    print("[proton-autogen] PROFILE: Win 95 Beta")
+    logger.info("[proton-autogen] PROFILE: Win 95 Beta")
 
     env["PROTON_USE_XALIA"] = "0"
     env["PROTON_USE_WINED3D"] = "1"
@@ -68,10 +72,10 @@ def env_win95Beta():
 # DirectDraw
 #-----------------------------------------------------------
 
-def env_DDraw():
+def env_DDraw(prefix=None, proton_path=None, exe_path=None):
     env = init_env()
 
-    print("[proton-autogen] PROFILE: DirectDraw (BETA)")
+    logger.info("[proton-autogen] PROFILE: DirectDraw (BETA)")
 
     env["PROTON_USE_XALIA"] = "0"
 

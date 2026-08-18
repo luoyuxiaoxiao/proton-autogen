@@ -1,8 +1,17 @@
-# Community Game Profiles
+# Community Profiles Database
 
 Proton-Autogen includes a community-maintained game profile database (`profiles.csv`) used to automatically select the best runtime profile for known Windows games and applications.
 
 Everyone is welcome to contribute. No Python knowledge is required.
+
+## Profiles
+
+Profiles allow you to customize the execution environment for specific applications or games without modifying Proton-Autogen itself.
+
+They are intended to make it easy to reuse environment variables, compatibility settings, and launch options across multiple applications. Whether you want to improve compatibility, optimize performance, or maintain separate configurations for different games, profiles provide a simple and reusable solution.
+
+If you plan to contribute new built-in profiles or improve existing ones, please read the project's contribution guidelines first:
+👉  📖 [CONTRIBUTING documentation](/CONTRIBUTING.md)
 
 ## Location
 
@@ -50,6 +59,8 @@ Battle.net.exe,Battle.net,dx11Bnet,Blizzard Launcher
 | Profile       | Typical use                                       |
 | ------------- | ------------------------------------------------- |
 | `launcher`    | Game launchers                                    |
+| `dotnet` | Configures the environment for applications requiring the .NET runtime. |
+| `dotnet_csharp` | Configures the environment for C#/.NET applications with settings optimized for managed executables. |
 | `dx11`        | DirectX 10/11 games                               |
 | `dx11Bnet`    | Battle.net launcher                               |
 | `dx12`        | DirectX 12 games                                  |

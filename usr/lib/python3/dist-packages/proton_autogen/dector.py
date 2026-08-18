@@ -23,7 +23,7 @@
 # OK - DXVK_ASYNC: Enables asynchronous shader compilation to reduce stuttering caused by shader loading.
 # OK - PROTON_ENABLE_NVAPI: Enables NVIDIA NVAPI support for NVIDIA-specific features.
 # OK - PROTON_USE_NTSYNC: Enables NTSync for improved synchronization performance and lower CPU overhead.
-# NO - PROTON_ENABLE_WAYLAND: Enables native Wayland support in Proton when available.
+# OK - PROTON_ENABLE_WAYLAND: Enables native Wayland support in Proton when available.
 # KO - PROTON_ENABLE_HDR: Enables HDR support for compatible games. Deprecated in Proton-CachyOS, where HDR is enabled automatically.
 # OK - gamemoderun: Launches the game through GameMode to apply gaming performance optimizations.
 # NA - –use-d3d11: Forces the game to use the Direct3D 11 renderer.
@@ -168,13 +168,14 @@ def gpu_env(system=None, features=None):
     # -----------------------
     if detect_wayland_mode(system, features):
         env["PROTON_ENABLE_WAYLAND"] = "1"
+        #env["SDL_VIDEODRIVER"] = "wayland" # Uniquement cas specifique
     else:
         env["PROTON_ENABLE_WAYLAND"] = "0"
+        #env["SDL_VIDEODRIVER"] = "x11" # Uniquement cas specifique
 
     # Valeurs par défaut
     profile = features.get("gpu", "auto")
-    gpu = system.get("gpu", "").lower()
-
+    gpu = system.get("gpu", "")
 
     # Normalisation
     if not isinstance(profile, str):
@@ -183,62 +184,43 @@ def gpu_env(system=None, features=None):
     if not isinstance(gpu, str):
         gpu = ""
 
+    gpu = gpu.lower()
 
-    # Seulement les profils performance
-    if profile not in ("performance", "extreme"):
+
+    # Les autres profils (auto...) ne modifient rien
+    if profile not in ("balanced", "performance", "extreme"):
         return env
-
-    # NVIDIA
+    # Profils GPU pris en charge
     if gpu == "nvidia":
+        env["__GL_SHADER_DISK_CACHE"] = "1"
 
-        env.update({
-            "PROTON_ENABLE_NVAPI": "1",
-            "__GL_SHADER_DISK_CACHE": "1",
-        })
+        if profile in ("performance", "extreme"):
+            env["PROTON_ENABLE_NVAPI"] = "1"
 
         if profile == "extreme":
             env["__GL_SHADER_DISK_CACHE_SKIP_CLEANUP"] = "1"
 
 
-    # AMD
     elif gpu == "amd":
+        if profile == "balanced":
+            env["MESA_SHADER_CACHE_MAX_SIZE"] = "5G"
 
-        env["RADV_PERFTEST"] = "aco"
-
-        # Activation SAM éventuelle
-        if (
-            profile == "extreme"
-            and system.get("sam_support", False)
-        ):
+        elif profile == "performance":
             env["RADV_PERFTEST"] = "aco,sam"
+            env["MESA_SHADER_CACHE_MAX_SIZE"] = "10G"
+
+        elif profile == "extreme":
+            env["RADV_PERFTEST"] = "aco,gpl"
+            env["MESA_SHADER_CACHE_MAX_SIZE"] = "20G"
+
+            if system.get("sam_support"):
+                env["RADV_PERFTEST"] += ",sam" #sam : améliore l'accès CPU → VRAM sur les GPU compatibles.
 
     # Intel / inconnu :
     # on ne force rien
     return env
 
-def gpu_env_v1(system, features):
-    profile = features.get("gpu")
-    gpu = system.get("gpu")
 
-    if profile not in ("performance", "extreme"):
-        return {}
-
-    env = {}
-
-    if gpu == "nvidia":
-        env["PROTON_ENABLE_NVAPI"] = "1"
-        env["__GL_SHADER_DISK_CACHE"] = "1"
-
-        if profile == "extreme":
-            env["__GL_SHADER_DISK_CACHE_SKIP_CLEANUP"] = "1"
-
-    elif gpu == "amd":
-        env["RADV_PERFTEST"] = "aco"
-
-        #if profile == "extreme" and system.get("sam_support", False):
-        #    env["RADV_PERFTEST"] = "sam"
-
-    return env
 #PROTON_DISABLE_NVAPI=1 DXVK_NVAPI_VKREFLEX=1 RADV_PERFMODE=high PROTON_USE_NTSYNC=1 RADV_PERFTEST=sam
 #----------------------------------------------------------------
 #system = { "gpu": "nvidia", "gpu_hybrid": False, "wayland": True, "steam_deck": False, "cpu_cores": 8, "cpu_threads": 16, "ram": 32, "vram": 12, }

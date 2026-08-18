@@ -81,11 +81,20 @@ def test_diag():
     assert_success(result)
     assert_no_crash(result)
 
-    # Diagnostic ne doit jamais être vide
     assert len(result.stdout.strip()) > 0
 
-    # Optionnel : éviter les erreurs visibles
-    assert "error" not in result.stdout.lower()
+    # Le diagnostic peut contenir des compteurs "errors"
+    # mais ne doit pas contenir de trace d'exception
+    forbidden = [
+        "traceback",
+        "exception",
+        "modulenotfounderror",
+    ]
+
+    stdout = result.stdout.lower()
+
+    for item in forbidden:
+        assert item not in stdout
 
 
 def test_diag_does_not_crash():
@@ -164,7 +173,6 @@ def test_about_list_protons():
     stdout = result.stdout.lower()
 
     expected = [
-        "found",
         "proton",
         "installation",
     ]
@@ -192,17 +200,21 @@ def test_about_json():
 
     stdout = result.stdout.lower()
 
-    expected = [
-        "proton-autogen",
-        "export",
-    ]
-
-    for item in expected:
-        assert item in stdout
+    assert "[export]" in stdout
+    assert "legacy.json" in stdout
+    assert "desktop.json" in stdout
 
 
 def test_about_gamemode():
     result = run_cli(["--gamemode"])
+
+    output = (result.stdout + result.stderr).lower()
+
+    assert "warning" in output
+    assert "found" in output
+
+def test_about_gamescope():
+    result = run_cli(["--gamescope"])
 
     output = (result.stdout + result.stderr).lower()
 

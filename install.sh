@@ -42,9 +42,7 @@ install_deps() {
                 python-pyyaml \
                 python-rich \
                 gtk4 \
-                pango \
-                cairo \
-                glib2
+                gdk-pixbuf2 \
             ;;
         apt)
             sudo apt update
@@ -55,6 +53,7 @@ install_deps() {
                 python3-cairo \
                 python3-rich \
                 gir1.2-gtk-4.0 \
+                gir1.2-gdkpixbuf-2.0 \
                 gir1.2-pango-1.0 \
                 libglib2.0-0 \
                 python3-pip
@@ -66,9 +65,7 @@ install_deps() {
                 python3-pyyaml \
                 python3-rich \
                 gtk4 \
-                pango \
-                cairo \
-                glib2
+                gdk-pixbuf2
             ;;
     esac
 }
@@ -84,7 +81,9 @@ echo "==> Installing resources..."
 
 sudo install -d /usr/share/proton-autogen
 sudo cp -r usr/share/proton-autogen/* /usr/share/proton-autogen/
-sudo cp debian/proton-autogen.1.gz /usr/share/man/man1/
+sudo install -Dm644 \
+    debian/proton-autogen.1.gz \
+    /usr/share/man/man1/proton-autogen.1.gz
 
 
 sudo install -d /usr/share/applications
@@ -97,6 +96,56 @@ sudo install -m644 \
     usr/share/icons/hicolor/256x256/apps/proton-autogen.png \
     /usr/share/icons/hicolor/256x256/apps/
 
+sudo install -m644 \
+    usr/share/icons/hicolor/256x256/apps/proton-autogen.png \
+    /usr/share/icons/hicolor/256x256/apps/io.github.N3oRay.ProtonAutogen.png
+
+echo "==> Detecting file managers..."
+install_file_manager_integrations() {
+
+    # KDE / Dolphin / KIO
+    if command -v dolphin >/dev/null 2>&1 || \
+       command -v kioexec >/dev/null 2>&1; then
+
+        echo "==> KDE/KIO detected."
+        echo "==> Installing KDE service menu..."
+
+        sudo install -Dm644 \
+            share/kio/servicemenus/proton-autogen.desktop \
+            /usr/share/kio/servicemenus/proton-autogen.desktop
+    else
+        echo "==> KDE/KIO not detected. Skipping KDE service menu."
+    fi
+
+
+    # Nautilus
+    if command -v nautilus >/dev/null 2>&1; then
+
+        echo "==> Nautilus detected."
+        echo "==> Installing Nautilus extension..."
+
+        sudo install -Dm644 \
+            share/nautilus-python/extensions/proton_autogen_nautilus.py \
+            /usr/share/nautilus-python/extensions/proton_autogen_nautilus.py
+    else
+        echo "==> Nautilus not detected. Skipping Nautilus extension."
+    fi
+
+
+    # Nemo
+    if command -v nemo >/dev/null 2>&1; then
+
+        echo "==> Nemo detected."
+        echo "==> Installing Nemo action..."
+
+        sudo install -Dm644 \
+            share/nemo/actions/proton-autogen.nemo_action \
+            /usr/share/nemo/actions/proton-autogen.nemo_action
+    else
+        echo "==> Nemo not detected. Skipping Nemo action."
+    fi
+}
+
 echo "==> Installing Python module..."
 
 PYTHON_SITE=$(python3 -c "import sysconfig; print(sysconfig.get_paths()['purelib'])")
@@ -107,8 +156,8 @@ sudo cp -r \
     usr/lib/python3/dist-packages/proton_autogen \
     "$PYTHON_SITE/"
 
-echo "==> Updating library cache..."
-sudo ldconfig || true
+#echo "==> Updating library cache..."
+#sudo ldconfig || true
 
 echo ""
 echo "=============================="

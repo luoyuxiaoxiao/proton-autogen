@@ -1,30 +1,41 @@
 #backend.py proton-autogen
 import os
 import json
-import hashlib
 import re
 import sys
-import shutil
 import subprocess
-import uuid
 import time
-from gi.repository import GLib
 from pathlib import Path
 from proton_autogen.exceptions import ExecutableNotFoundError, ProtonNotFoundError, GameConfigError, PrefixError
-from shutil import which
 from time import perf_counter
-import configparser
-
+from proton_autogen.config import VERSION, load_proton_paths
 from proton_autogen.utils.logger import StructuredLogger
 from proton_autogen.progress import Progress
 
 from proton_autogen.loader import save_game_config, load_game_config
-from proton_autogen.editor import add_game, edit_game_ui
-from proton_autogen.core import *
-from proton_autogen.profiles.init import *
-from proton_autogen.i18n import *
-from proton_autogen.stats import *
-from proton_autogen.pa_log import show_result, handle_result, result_to_line
+from proton_autogen.core import (
+    DEBUG,
+    VERBOSE,
+    USER_PROFILE,
+    USER_PROFILE_DATA,
+
+    run_game_proton,
+    run_standard,
+
+    has_mangohud,
+    has_gamemode,
+    has_gamescope,
+    has_xrandr,
+    has_proton_call,
+    has_wine,
+
+    proton_name,
+    proton_path,
+)
+from proton_autogen.profiles.init import detect_exe_type
+from proton_autogen.i18n import tr, init_language
+from proton_autogen.stats import get_game_badges, log_game_stats
+from proton_autogen.pa_log import handle_result, result_to_line
 from proton_autogen.diag import find_all_protons, find_proton
 # new files:
 from proton_autogen.dector import resolve_game_features
@@ -32,11 +43,10 @@ from proton_autogen.system import detect_system_info
 from proton_autogen.session import finalize_session, notifications
 from proton_autogen.proton_call import launch_proton_call
 
-
-#notifications.notify("info", "Update", "Game launched")
-
 #-------------------------- Init Log -------------------
 logger = StructuredLogger("proton-autogen.backend")
+#-------------------------- Init Langue -------------------
+init_language()
 
 #-----
 # proton-autogen: improved profile system (launcher / DX11 / DX12 / oldgames)
@@ -50,18 +60,43 @@ logger = StructuredLogger("proton-autogen.backend")
 # ----------------------------
 
 def print_runtime_info(proton, exe_path, mangohud_available):
-    print("[proton-autogen] Runtime information")
-    print(f"  Executable : {exe_path}")
-    print(f"  Proton     : {proton_name(proton)}")
-    print(f"  Path       : {proton_path(proton)}")
-    print("  proton-call:", "detected" if has_proton_call() else "missing")
-    print("  GameMode  :", "available" if has_gamemode() else "unavailable")
-    print("  MangoHud  :", "available" if mangohud_available else "unavailable")
+    print(f"[proton-autogen] {tr('runtime_information')}")
+
+    print(f"  {tr('executable'):<10}: {exe_path}")
+    print(f"  {tr('proton'):<10}: {proton_name(proton)}")
+    print(f"  {tr('path'):<10}: {proton_path(proton)}")
+
+    print(
+        f"  {tr('proton_call'):<10}: ",
+        tr("detected") if has_proton_call() else tr("missing")
+    )
+
+    print(
+        f"  {tr('gamemode'):<10}: ",
+        tr("available") if has_gamemode() else tr("unavailable")
+    )
+    print(
+        f"  {tr('gamescope'):<10}: ",
+        tr("available") if has_gamescope() else tr("unavailable")
+    )
+    print(
+        f"  {tr('xrandr'):<10}: ",
+        tr("available") if has_xrandr() else tr("unavailable")
+    )
+
+    print(
+        f"  {tr('mangohud'):<10}: ",
+        tr("available") if mangohud_available else tr("unavailable")
+    )
+
+
     print("")
 # ---------------------------------------------------------------------------------------------------
+
+
 # ---------------------------------------------------------------------------------------------------
 
-def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
+def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None, game_id=None):
     try:
         start_time = time.time() # Stats
         result_code = 0 # Stats
@@ -71,7 +106,7 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
         exe_path = os.path.abspath(exe_path)
 
         exe = Path(exe_path).resolve()
-        progress.update( 5, "Checking executable" )
+        progress.update(5, tr("checking_executable"))
         if not exe.exists():
             raise ExecutableNotFoundError(exe)
 
@@ -82,14 +117,14 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
         mangohud_available = has_mangohud()
 
         config = load_game_config(exe_path)
-        progress.update( 25, "Loading game configuration" )
+        progress.update(25, tr("loading_game_configuration"))
 
         system = detect_system_info()  # ou équivalent existant dans core
         logger.info(
             "System information:\n" +
             "\n".join(f"  {key}: {value}" for key, value in system.items())
         )
-        progress.update( 40, "Detecting system" )
+        progress.update(60, tr("runtime_selected"))
 
         #-------------------------------- Compatibility old profil ------
         exe_type = None
@@ -110,12 +145,9 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
 
             cfg_mangohud = normalize_flag(features.get("mangohud"), False)
             cfg_gamemode = normalize_flag(features.get("gamemode"), False)
-
-            # 核心启动链路：先把游戏专属环境写入当前进程，后续 base_env()/init_env()
-            # 会复制这些变量，确保 MangoHud 隐藏叠层与限帧等配置不会丢失。
-            for key, value in config.get("env", {}).items():
-                os.environ[str(key)] = str(value)
-
+            cfg_gamescope = normalize_flag(features.get("gamescope"), False)
+            cfg_fps_limit = features.get("fps_limit", 60) or 60
+            cfg_custom_env = config.get("env", {}) or {}
             # Load features -----------------------------------------------
             rfeatures = resolve_game_features(
                 {"features": features},
@@ -140,12 +172,16 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
             # By Default
             cfg_mangohud = False
             cfg_gamemode = False
+            cfg_gamescope = False
+            cfg_fps_limit = 60
+            cfg_custom_env = {}
             rfeatures = None
             proton = find_proton()
 
-        progress.update( 60, "Proton runtime selected" )
+        progress.update(60, tr("runtime_selected"))
         enable_mangohud = cfg_mangohud if config else False
         enable_gamemode = cfg_gamemode if config else False
+        enable_gamescope = cfg_gamescope if config else False
 
         # CLI overrides (priorité utilisateur)
         if "--mangohud" in sys.argv:
@@ -154,6 +190,9 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
         if "--gamemode" in sys.argv:
             enable_gamemode = True
 
+        if "--gamescope" in sys.argv:
+            enable_gamescope = True
+
 
         if proton:
             print_runtime_info(proton, exe_path, mangohud_available)
@@ -161,7 +200,7 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
             raise ProtonNotFoundError(exe_path)
 
         if launch_mode == "proton-call" and has_proton_call():
-            progress.update( 80, "Starting Proton Call" )
+            progress.update( 80, tr("starting_proton_call") )
             launch_proton_call(
                 exe_path=exe_path,
                 proton=proton,
@@ -169,8 +208,10 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
                 features=rfeatures,
                 enable_mangohud=enable_mangohud,
                 enable_gamemode=enable_gamemode,
+                enable_gamescope=enable_gamescope,
                 start_time=start_time,
-                extra_args=[]
+                extra_args=[],
+                progress=progress
             )
 
         elif launch_mode == "proton" and proton:
@@ -181,12 +222,13 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
             if config and config.get("prefix"):
                 prefix_mode = config["prefix"].get("name", prefix_mode)
                 #Message
-                notifications.notify("info", "proton-autogen", f"LOAD CONFIG PREFIX : {prefix_mode}", ui=True)
+                notifications.notify( "info", "proton-autogen", tr("load_config_prefix", prefix=prefix_mode), ui=True )
 
             result_code = -1
-            progress.update( 80, "Starting Proton" )
+            progress.update(80, tr("starting_proton"))
             result_code = run_game_proton(exe_path=exe_path, exe_type=exe_type, proton=proton, system=system, features=rfeatures, enable_mangohud=enable_mangohud,
-             enable_gamemode=enable_gamemode, prefix_mode=prefix_mode)
+             enable_gamemode=enable_gamemode, enable_gamescope=enable_gamescope, fps_limit=cfg_fps_limit, custom_env=cfg_custom_env,
+             prefix_mode=prefix_mode, progress=progress, game_id=game_id,)
             if DEBUG or VERBOSE:
                 logger.debug("Result type: %s", type(result_code))
                 logger.debug("Result: %s", result_code)
@@ -199,7 +241,7 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
             status = handle_result(result_code)
             # Update Stats
             finalize_session(exe_path, start_time, result_code)
-
+            log_game_stats(exe_path)
             #show_result !
             progress.update( 100, result_to_line(status) )
 
@@ -208,35 +250,26 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
         elif launch_mode == "wine":
 
             result_code = -1
-            progress.update( 80, "Starting Wine" )
+            progress.update(80, tr("starting_wine"))
             result_code = run_standard(exe_path)
             status = handle_result(result_code)
             # Update Stats
             finalize_session(exe_path, start_time, result_code) # Stats
+            log_game_stats(exe_path)
             #show_result !
             progress.update( 100, result_to_line(status) )
 
             sys.exit(status["code"])
 
-        progress.update(100, "Run started ...")
+        progress.update(100, tr("run_started"))
 
     except ExecutableNotFoundError as e:
         logger.error(str(e))
-        notifications.notify( "warning", "Missing executable", str(e), ui=True, )
+        notifications.notify( "warning", tr("missing_executable_title"), tr("missing_executable_message"), ui=True, )
         sys.exit(1)
 
     except ProtonNotFoundError as e:
-        message = """
-            No Proton installation found.
-
-            Install a Proton version (e.g. via ProtonUp-Qt)
-            or specify PROTON_PATH.
-
-            Command line:
-              protonup -d ~/.steam/root/compatibilitytools.d
-
-            Restart Steam and try again.
-            """.strip()
+        message = tr("proton_not_found").strip()
         notifications.notify( "error", "proton-autogen", message, ui=True, )
         logger.error(str(e))
         sys.exit(2)
@@ -259,7 +292,7 @@ def list_protons():
     protons = find_all_protons()
 
     if not protons:
-        print("No Proton installation found")
+        print(tr("no_proton_installation"))
         return
 
     selected = find_proton()
@@ -277,13 +310,13 @@ def list_protons():
     def sort_key(p):
         return os.path.basename(p).lower()
 
-    print("Detected Proton installations:\n")
+    print(f"{tr('detected_proton_installations')}:\n")
 
     for proton in sorted(protons, key=sort_key):
         proton_real = os.path.realpath(proton)
 
         is_selected = (selected_path == proton_real)
-        suffix = " (selected)" if is_selected else ""
+        suffix = f" ({tr('selected')})" if is_selected else ""
 
         print(f"  {os.path.basename(proton)}{suffix}")
         print(f"    {proton}\n")
@@ -291,24 +324,41 @@ def list_protons():
 def get_diagnostic_text():
     lines = []
 
-    lines.append("proton-autogen diagnostic\n")
-
-    lines.append(f"Version      : {VERSION}")
-    lines.append(f"Python       : {sys.version.split()[0]}\n")
-
-    lines.append("Runtime:")
-    lines.append(f"  proton-call : {'yes' if has_proton_call() else 'no'}")
-    lines.append(f"  wine        : {'yes' if has_wine() else 'no'}")
-    lines.append(f"  gamemode    : {'yes' if has_gamemode() else 'no'}")
-    lines.append(f"  mangohud    : {'yes' if has_mangohud() else 'no'}\n")
-
-    lines.append(f"Platform     : {sys.platform}\n")
+    lines.append(f"{tr('diagnostic')}\n")
+    lines.append(f"{tr('version'):<12}: {VERSION}")
+    lines.append(f"{tr('python'):<12}: {sys.version.split()[0]}\n")
+    lines.append(f"{tr('runtime')}:")
+    lines.append(
+        f"  {tr('proton_call')} : "
+        f"{tr('yes') if has_proton_call() else tr('no')}"
+    )
+    lines.append(
+        f"  {tr('wine')} : "
+        f"{tr('yes') if has_wine() else tr('no')}"
+    )
+    lines.append(
+        f"  {tr('gamemode')} : "
+        f"{tr('yes') if has_gamemode() else tr('no')}"
+    )
+    lines.append(
+        f"  {tr('gamescope')} : "
+        f"{tr('yes') if has_gamescope() else tr('no')}"
+    )
+    lines.append(
+        f"  {tr('mangohud')} : "
+        f"{tr('yes') if has_mangohud() else tr('no')}"
+    )
+    lines.append(
+        f"{tr('platform'):<12}: {sys.platform}\n"
+    )
 
     protons = find_all_protons()
-    lines.append(f"Detected Proton installations: {len(protons)}\n")
+    lines.append(
+        f"{tr('detected_proton_installations')}: {len(protons)}\n"
+    )
 
     if not protons:
-        lines.append("  none\n")
+        lines.append(f"  {tr('none')}\n")
         return "\n".join(lines)
 
     selected = find_proton()
@@ -325,7 +375,7 @@ def get_diagnostic_text():
     for proton in protons_sorted:
         proton_real = os.path.realpath(proton)
 
-        marker = " [selected]" if selected_path and proton_real == selected_path else ""
+        marker = f" [{tr('selected')}]" if selected_path and proton_real == selected_path else ""
 
         lines.append(f"  {os.path.basename(proton)}{marker}")
         lines.append(f"    {proton}")
@@ -341,26 +391,6 @@ def normalize_flag(value, default=True):
     if isinstance(value, str):
         return value.lower() in ("1", "true", "yes", "on")
     return bool(value)
-
-
-
-
-
-
-
-def create_new_prefix():
-    name = input("Prefix name (empty = auto): ").strip()
-
-    if not name:
-        name = f"auto-{uuid.uuid4().hex[:8]}"
-
-    root = os.path.expanduser("~/Documents/Proton/env")
-    path = os.path.join(root, name)
-
-    os.makedirs(path, exist_ok=True)
-
-    return name
-
 
 
 def load_registered_games():
@@ -499,7 +529,7 @@ def find_windows_programs_ux_search(root=None):
 
                 programs.append(str(Path(dirpath) / filename))
 
-    print(f"The program search finished in {perf_counter() - start:.3f}s")
+    print( tr( "search_finished", time=perf_counter() - start ) )
 
     return programs
 
@@ -561,10 +591,10 @@ def list_programs():
     programs = find_windows_programs()
 
     if not programs:
-        print("No Windows programs found")
+        print(tr("no_windows_programs"))
         return
 
-    print("Detected Windows programs:")
+    print(f"{tr('detected_programs')}:")
     print("")
 
     for exe in sorted(programs):
@@ -595,8 +625,11 @@ def list_programs_ux(lang: str = "en"):
             "prefix": config.get("prefix", {"name": "main"}),
             "features": config.get("features", {
                 "mangohud": False,
+                "fps_limit": 60,
                 "gamemode": False,
+                "gamescope": False,
             }),
+            "env": config.get("env", {}),
 
             "favorite": config.get("favorite", False),
             "playtime": config.get("playtime", {
@@ -679,3 +712,4 @@ def find_proton_by_name(name: str):
     # meilleur match
     candidates.sort(key=lambda x: x[0], reverse=True)
     return candidates[0][1]
+# End backend

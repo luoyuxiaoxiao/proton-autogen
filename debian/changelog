@@ -1,32 +1,13 @@
-proton-autogen (3.0.6) noble; urgency=medium
+proton-autogen (3.2.7) noble; urgency=medium
 
-  * More stability CLI
-  * Added Support Profile DotNet
-  * Added new Cute, KDE and Dark CSS themes and reworked theme handling.
-  * Stabilized the Sensors menu.
-  * Added CSV-based game profile configurations.
-  * Added a button to remove game configurations.
-  * Redesigned the GTK4 interface and introduced a new carousel component.
-  * Improved automatic Proton prefix management and runtime stability.
-  * Added diagnostic log generation via `proton_autogen --diag`.
-  * Added GPU profile management with automatic AMD and NVIDIA detection.
-  * Added system diagnostics for Debian, Ubuntu, Linux Mint,
-    Arch Linux, CachyOS and Bazzite.
-  * Added Lutris export support and game registry integration.
-  * Added JSON logging and multilingual UI support.
-  * Added launch progress reporting and stable Sensors menu support.
-  * Refined the Adwaita and Hello Kitty themes.
-  * Added game, profile and platform badges.
-  * Improved the GTK4 layout, responsiveness and desktop notifications.
-  * Improved Proton detection, launch reliability and session tracking.
-  * Enhanced prefix and configuration management.
-  * Optimized executable scanning with intelligent caching.
-  * Improved Proton GE compatibility and Wine fallback handling.
-  * Fixed MangoHud support for 32-bit applications.
-  * Fixed launch return codes, badge refresh and game list updates.
-  * Fixed several UI refresh and stability issues.
-  * Improved backend/UI separation.
-  * Enhanced debugging and diagnostic tools.
-  * General code cleanup and internal optimizations.
+  * Thanks to all users and contributors for their continued support, feedback and bug reports.
+  * Thanks to all users and contributors for their continued support, feedback and bug reports.
+  * Add support for custom environment variables on a per-application basis, allowing users to define and manage application-specific runtime environment settings directly from the graphical editor.
+  * Add configurable FPS limits for MangoHud on a per-application basis.
+  * Improve application configuration management by correctly persisting, updating and removing custom environment variables.
+  * Improve the graphical application editor with dedicated controls for custom environment variables and MangoHud FPS limits.
+  * Improve environment configuration handling to ensure removed custom variables are properly deleted from application profiles.
+  * Improve MangoHud configuration flexibility with customizable FPS limits instead of relying solely on the default limit.
+  * General UX improvements, configuration handling improvements and code cleanup.
 
- -- N3oray <n3oray77@gmail.com>  Sat, 18 Jul 2026 12:01:00 +0200
+ -- N3oray <n3oray77@gmail.com>  Tue, 18 Aug 2026 03:00:00 +0200

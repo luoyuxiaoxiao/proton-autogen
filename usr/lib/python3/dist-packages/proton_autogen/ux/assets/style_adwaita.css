@@ -120,15 +120,10 @@ windowcontrols button:active,
 button {
 
     background: @surface;
-
     color: @text;
-
     border-radius: 8px;
-
     border: 1px solid @border;
-
     padding: 6px 12px;
-
     transition: 150ms ease;
 }
 
@@ -211,16 +206,11 @@ button.suggested-action:hover {
 .btn-launch {
 
     background: @accent;
-
     color: white;
-
     border: none;
-
     border-radius: 8px;
-
     min-width: 30px;
     min-height: 30px;
-
     padding: 4px 8px;
 
     font-weight: 600;
@@ -377,6 +367,12 @@ list row:selected,
     font-size: 13px;
 }
 
+.form-label {
+    color: @text-muted;
+    font-weight: 600;
+    font-size: 13px;
+}
+
 .label-bottom {
     color: @text;
     font-size: 14px;
@@ -492,13 +488,12 @@ entry placeholder,
    ========================================================= */
 
 .badge {
-    padding: 3px 8px;
-    margin-left: 6px;
-    border-radius: 999px;
+    padding: 1px 2px;
+    border-radius: 1px;
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.04);
     color: @text;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.2px;
 }
@@ -839,4 +834,28 @@ button,
 
 .btn-delete image {
     -gtk-icon-size: 10px;
+}
+/* GAME ICON */
+.game-icon {
+
+    min-width:64px;
+    min-height:64px;
+
+    border-radius:14px;
+
+    background:
+        rgba(255,255,255,0.85);
+    box-shadow:
+        0 0 10px rgba(46, 204, 113,0.15);
+
+    padding:4px;
+}
+
+.game-icon:hover {
+
+    background:
+        rgba(255,255,255,0.35);
+
+    box-shadow:
+        0 0 10px rgba(46, 204, 113,0.35);
 }

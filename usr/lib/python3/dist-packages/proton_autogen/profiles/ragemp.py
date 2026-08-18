@@ -1,13 +1,16 @@
 from proton_autogen.profiles.base import init_env
+from proton_autogen.utils.logger import StructuredLogger
+#-------------------------- Init Log -------------------
+logger = StructuredLogger("proton-autogen.profiles.ragemp")
 
 
 # ---------------------------------------------------
-# RageMP
+# RageMP - old profiles - New dotnet_csharp
 # ---------------------------------------------------
-def env_ragemp():
+def env_ragemp(prefix=None, proton_path=None, exe_path=None):
     env = init_env()
 
-    print("[proton-autogen] PROFILE: RageMP Compatibility")
+    logger.info("[proton-autogen] PROFILE: RageMP Compatibility")
 
     # Synchronisation Proton
     env["WINEESYNC"] = "1"

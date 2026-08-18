@@ -8,15 +8,19 @@ from proton_autogen.core import (
     base_env,
     has_mangohud,
     has_gamemode,
+    has_gamescope,
     DEBUG,
-    VERBOSE,   # 👈 IMPORTANT
+    VERBOSE,
 )
-
+from proton_autogen.utils.gamescope import build_gamescope_command
 from proton_autogen.dector import resolve_game_features, gpu_env
 from proton_autogen.util_path import proton_path, proton_name
 from proton_autogen.pa_log import handle_result, result_to_line
 from proton_autogen.session import finalize_session
 from proton_autogen.notify import notifications
+from proton_autogen.util_path import proton_path, proton_name
+from proton_autogen.core import get_prefix_path
+from proton_autogen.progress import Progress
 
 
 def launch_proton_call(
@@ -26,12 +30,21 @@ def launch_proton_call(
     features,
     enable_mangohud,
     enable_gamemode,
+    enable_gamescope,
     start_time,
-    extra_args=None
+    extra_args=None,
+    progress=None,
 ):
+
+    # -------------------------
+    # Proton Path & Prefix Path
+    # -------------------------
+    prefix_path = get_prefix_path("main", exe_path)
+    proton_dir = proton_path(proton)
     env = base_env(
         enable_mangohud=enable_mangohud,
         enable_gamemode=enable_gamemode,
+        enable_gamescope=enable_gamescope,
         exe_path=exe_path,
         exe_type=features.get("exe_type")
     )
@@ -83,17 +96,46 @@ def launch_proton_call(
         print("[proton-autogen] GameMode not found")
 
     # -------------------------
+    # Gamescope
+    # -------------------------
+    gamescope_cmd = []
+
+    if enable_gamescope:
+        if has_gamescope():
+            notifications.notify(
+                "info",
+                "proton-autogen",
+                f"Gamescope : enabled for {name}",
+                ui=False
+            )
+
+            gamescope_cmd = build_gamescope_command(env)
+
+        else:
+            notifications.notify(
+                "warning",
+                "proton-autogen",
+                "Gamescope requested but not installed",
+                ui=False
+            )
+
+    # -------------------------
     # Command build
     # -------------------------
     extra_args = extra_args or []
 
-    cmd = [
-        "proton-call",
-        "-c", proton_path(proton),
-        "-r", exe_path,
-        "--",
-        exe_path
-    ] + [exe_path] + sys.argv[2:]
+    cmd = (
+        gamescope_cmd
+        + [
+            "proton-call",
+            "-c", proton_path(proton),
+            "-r", exe_path,
+            "--",
+            exe_path,
+        ]
+        + extra_args
+        + sys.argv[2:]
+    )
 
     print(f"[proton-autogen] Launching with {proton_name(proton)}")
 
@@ -126,6 +168,7 @@ def launch_proton_call(
     # Update Stats
     finalize_session(exe_path, start_time, result_code)
     #show_result !
-    progress.update( 100, result_to_line(status) )
+    if progress is not None:
+        progress.update( 100, result_to_line(status) )
 
     sys.exit(status["code"])

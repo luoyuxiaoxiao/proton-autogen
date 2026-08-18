@@ -4,17 +4,18 @@
 ![GitHub release](https://img.shields.io/github/v/release/N3oRay/proton-autogen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Build](https://github.com/N3oRay/proton-autogen/actions/workflows/arch-package.yml/badge.svg)
+![Debian Package](https://github.com/N3oRay/proton-autogen/actions/workflows/package.yml/badge.svg)
 ![Downloads](https://img.shields.io/github/downloads/N3oRay/proton-autogen/total)
 
-**Proton-Autogen is a lightweight Proton/Wine orchestration layer that allows Linux users to run Windows applications directly from .exe files without manually configuring Steam shortcuts or Wine prefixes.**
-
+**Proton-autogen automatically creates and configures Proton environments for Windows games and applications, applying optimized settings for the best compatibility.**
+**Proton-autogen is a lightweight Proton/Wine orchestration layer that allows Linux users to run Windows applications from `.exe` files without manually managing Steam shortcuts or Wine prefixes.**
 
 
 Run Windows executables through Proton with zero Steam configuration.
 ---
 🎬 Quick Demo
 <p align="left">
-  <img src="docs/screenshots/V2.9.6.png" width="450" alt="Proton-Autogen Demo">
+  <img src="docs/screenshots/v3.1.4.jpg" width="445" alt="Proton-Autogen Demo">
   <img src="docs/screenshots/demo.gif" width="550" alt="Proton-Autogen Demo">
 </p>
 
@@ -38,7 +39,7 @@ Simply:
 
 * ▶ Run Windows `.exe` files directly via Proton
 * 🧠 Automatic Proton detection
-* 🚀 Proton-CachyOS and GE-Proton support
+* 🚀 Support for Proton-CachyOS, GE-Proton and custom Proton builds
 * 🍷 Wine fallback support
 * 📦 Prefix management
 * 🖱️ File manager integration : Nemo, Nautilus, Dolphin
@@ -79,7 +80,14 @@ proton-autogen game.exe
 proton-autogen --ux
 ```
 
-### Example Output: 
+## 🛠️ Troubleshooting
+
+If an application does not launch, generate a diagnostic report:
+
+```bash
+proton-autogen --diag
+```
+### Example Output:
 See the full example output here: [Example Output](docs/examples.md)
 
 
@@ -93,14 +101,48 @@ Latest releases are available on GitHub:
 - Source installation: `install.sh`
 - Arch Linux / CachyOS: AUR (coming soon)
 
-## 📦 Installation & Update Linux (Debian/Fedora/Arch)
-AUR package coming soon.
 
-See the manual installation guide:
+## 📦 Installation & Updates
+
+### Ubuntu / Linux Mint / Pop!_OS (Recommended)
+
+The recommended installation method is the official Proton-Autogen PPA:
+
+For Arch Linux and CachyOS, a native package is planned.
+Until then, the manual installer is available.
+
+### Recommended installation (Ubuntu / Linux Mint / Pop!_OS)
+
+```bash
+sudo add-apt-repository ppa:n3oray/proton-autogen
+sudo apt update
+sudo apt install proton-autogen
+```
+
+### Debian / Ubuntu-based distributions (.deb package)
+
+Download the latest `.deb` release from GitHub:
+```bash
+sudo apt install ./proton-autogen_*.deb
+```
+### Build Debian package manually
+
+```bash
+git clone https://github.com/N3oRay/proton-autogen.git
+cd proton-autogen
+dpkg-buildpackage -b -us -uc
+sudo apt install ../proton-autogen_*.deb
+```
+
+### See the manual installation guide:
 [Installation Guide](docs/install.md)
 
-### (install manual)
 
+Review the installer before running it
+```bash
+less install.sh
+```
+### (install manual)
 ```bash
 git clone https://github.com/N3oRay/proton-autogen.git
 cd proton-autogen
@@ -108,28 +150,11 @@ chmod +x install.sh
 ./install.sh
 ```
 
-## 📦 Installation & Update - Debian / Ubuntu
 
-### Manual build  and install
-
-```bash
-git clone https://github.com/N3oRay/proton-autogen.git
-cd proton-autogen
-dpkg-buildpackage -b -us -uc
-sudo dpkg -i ../proton-autogen_*.deb
-```
-
-### Ubuntu (Linux Mint, Pop!_OS) (install only)
-
-```bash
-sudo add-apt-repository ppa:n3oray/proton-autogen
-sudo apt update
-sudo apt install proton-autogen
-```
 ### Config
 The configuration is fully automatic.
 ```bash
-cat ~/.config/proton-autogen.conf
+cat ~/.config/proton-autogen/proton-autogen.conf
 ls ~/.config/proton-autogen/games
 ```
 
@@ -160,6 +185,7 @@ Supported locations:
 
 - GameMode
 - MangoHud
+- GameScope
 - Proton-CachyOS
 - GE-Proton
 - ProtonUp-Qt
@@ -197,9 +223,11 @@ sudo apt purge proton-autogen
 ### Manual Cleanup
 
 ```bash
-rm -rf ~/.config/proton-autogen
-rm -f ~/.local/share/nemo/actions/proton-autogen.nemo_action
+chmod +x ./uninstall.sh
+./uninstall.sh
 ```
+The uninstall script only removes Proton-Autogen files and configuration.
+It does not remove Steam, Proton versions, or existing Wine prefixes.
 
 Restart Nemo:
 
@@ -225,19 +253,27 @@ nautilus -q
 ---
 
 ## 🛣️ Roadmap
+### Core features
 
-* [x] Per-application profiles
-* [x] Advanced prefix control (Steam compatdata integration)
-* [x] Configuration file support
-* [x] Game / Installer auto-detection
-* [x] GUI frontend
-* [x] Lutris integration
-* [x] Sensors and MangoHud Help
-* [ ] GameScope integration
-* [ ] Winetricks integration
-* [ ] ProtonDB integration
-* [ ] Bottles integration
-* [ ] Silent mode
+- [x] Per-application profiles
+- [x] Advanced prefix control (Steam compatdata integration)
+- [x] Configuration file support
+- [x] Game / Installer auto-detection
+- [x] GUI frontend
+
+### Gaming integrations
+
+- [x] Lutris profile export
+- [ ] Lutris profile import
+- [ ] Bottles profile import/export
+- [x] Sensors and MangoHud support
+- [x] Gamescope integration
+
+### Automation
+
+- [ ] ProtonDB integration
+- [ ] Automatic dependency installation (.NET, VC++, DirectX...)
+- [ ] Silent mode
 
 ---
 
@@ -275,3 +311,22 @@ GitHub: [@N3oRay](https://github.com/N3oRay)
 This project is licensed under the MIT License.
 
 See the `LICENSE` file for details.
+
+
+## 📈 Project Activity
+
+<sub>
+Actively maintained and used by Linux users, with regular releases and ongoing improvements.
+</sub>
+
+```markdown
+📦 Clones             ████████████████████  2,091
+👥 Unique cloners     ████████              509
+👀 Views              ██████                393
+🌍 Unique visitors    ██                    157
+Ubuntu PPA
+📥 Downloads █████████████████████  301
+```
+<sub>
+Launchpad downloads represent PPA package downloads, not unique users.
+</sub>

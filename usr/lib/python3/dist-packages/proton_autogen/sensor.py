@@ -200,24 +200,12 @@ def get_mangohud_advice():
             break
 
     return (
-        "📊 MangoHud recommended config:\n\n"
+        "\n"
         "cpu_stats\n"
         "cpu_temp\n"
-        f"cpu_custom_temp_sensor={cpu_sensor},{cpu_input}\n\n"
-        "✔ Selected lowest-index Core sensor (stable choice)"
+        f"cpu_custom_temp_sensor={cpu_sensor},{cpu_input}\n"
     )
 
 
 def print_mangohud_advice():
     print(get_mangohud_advice())
-
-"""
-def main():
-    for hwmon in get_hwmons():
-        print_hwmon(hwmon)
-
-
-if __name__ == "__main__":
-    main()
-
-"""

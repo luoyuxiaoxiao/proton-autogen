@@ -5,6 +5,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gio", "2.0")
 
 from gi.repository import Gtk, Gio
+from proton_autogen.i18n import tr
+
 
 
 # =========================================================
@@ -18,12 +20,13 @@ def build_app_menu(app):
 
     menu = Gio.Menu()
 
-    menu.append("Diagnostics", "app.diag")
-    menu.append("Sensors", "app.sensors")
-    menu.append("Help MangoHud", "app.mangohud")
-    menu.append("Help", "app.help")
-    menu.append("Requis", "app.requis")
-    menu.append("About", "app.about")
+    menu.append(tr("menu_diagnostics"), "app.diag")
+    menu.append(tr("menu_sensors"), "app.sensors")
+    menu.append(tr("menu_help_mangohud"), "app.mangohud")
+    menu.append(tr("menu_help"), "app.help")
+    menu.append(tr("menu_requirements"), "app.requis")
+    menu.append(tr("menu_about_proton"), "app.aboutproton")
+    menu.append(tr("menu_about"), "app.about")
 
     return menu
 
@@ -50,12 +53,13 @@ def create_popover_menu(parent, actions=None):
     if actions is None:
         actions = {}
 
-    box.append(make_btn("Diagnostics", actions.get("diag", lambda: None)))
-    box.append(make_btn("Help", actions.get("help", lambda: None)))
-    box.append(make_btn("Sensors", actions.get("sensors", lambda: None)))
-    box.append(make_btn("Help MangoHud", actions.get("mangohud", lambda: None)))
-    box.append(make_btn("Requis", actions.get("requis", lambda: None)))
-    box.append(make_btn("About", actions.get("about", lambda: None)))
+    box.append(make_btn(tr("menu_diagnostics"), actions.get("diag", lambda: None)))
+    box.append(make_btn(tr("menu_help"), actions.get("help", lambda: None)))
+    box.append(make_btn(tr("menu_sensors"), actions.get("sensors", lambda: None)))
+    box.append(make_btn(tr("menu_help_mangohud"), actions.get("mangohud", lambda: None)))
+    box.append(make_btn(tr("menu_requirements"), actions.get("requis", lambda: None)))
+    box.append(make_btn(tr("menu_about_proton"), actions.get("aboutproton", lambda: None)))
+    box.append(make_btn(tr("menu_about"), actions.get("about", lambda: None)))
 
     pop.set_child(box)
     pop.set_parent(parent)

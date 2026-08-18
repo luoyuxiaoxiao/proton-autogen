@@ -2,6 +2,9 @@ from pathlib import Path
 import locale
 import os
 import subprocess
+from proton_autogen.cachyos import get_cachy_text
+from proton_autogen.i18n import detect_help_env_lang
+
 
 def has_nvidia_gpu():
     try:
@@ -57,29 +60,6 @@ if env["nvidia"]:
     print("NVIDIA GPU detected → enable compatibility hints")
 """
 
-def detect_language():
-    lang = locale.getlocale()[0]
-
-    if not lang:
-        return "en"
-
-    lang = lang.lower()
-
-    if lang.startswith("fr"):
-        return "fr"
-    if lang.startswith("de"):
-        return "de"
-    if lang.startswith("es"):
-        return "es"
-    if lang.startswith("zh"):
-        return "zh"
-    if lang.startswith("uk"):
-        return "uk"
-    if lang.startswith("pt"):
-        return "pt"
-
-    return "en"
-
 
 def detect_distro():
     try:
@@ -101,17 +81,76 @@ def detect_distro():
 DEV_DOCS = Path(__file__).parent / "docs"
 SYS_DOCS = Path("/usr/share/proton-autogen/docs")
 
-
+"""
 def get_docs_root():
     if DEV_DOCS.exists():
         return DEV_DOCS
     return SYS_DOCS
+"""
+
+def get_docs_root():
+
+    candidates = [
+        DEV_DOCS,
+        SYS_DOCS,
+    ]
+
+    for path in candidates:
+        if path.exists():
+            return path
+
+    return SYS_DOCS
+
+def is_cachyos():
+    try:
+        with open("/etc/os-release", encoding="utf-8") as f:
+            data = f.read().lower()
+
+        return "cachyos" in data
+
+    except FileNotFoundError:
+        return False
+
+def get_requirements_text():
+
+    root = get_docs_root()
+
+    lang = detect_help_env_lang()
+    distro = detect_distro()
+
+    texts = []
+
+    # Distribution
+    for filename in (
+        f"{distro}_{lang}.txt",
+        f"{distro}_en.txt"
+    ):
+        path = root / filename
+
+        if path.exists():
+            texts.append(
+                path.read_text(encoding="utf-8")
+            )
+            break
+
+
+    # CachyOS
+    if is_cachyos():
+        cachy = get_cachy_text()
+
+        if cachy:
+            texts.append(cachy)
+
+
+    return "\n\n".join(texts) if texts else (
+        "📄 Documentation not available."
+    )
 
 
 def get_prerequisites_text():
     root = get_docs_root()
 
-    lang = detect_language()
+    lang = detect_help_env_lang()
     distro = detect_distro()
 
     file_path = root / f"{distro}_{lang}.txt"
@@ -126,9 +165,9 @@ def get_prerequisites_text():
     return "Documentation not available."
 
 
-def afficher_prerequis():
-    print(get_prerequisites_text())
+def afficher_requirements():
+    print(get_requirements_text())
 
 
-def afficher_prerequis_label():
-    return get_prerequisites_text()
+def afficher_requirements_label():
+    return get_requirements_text()

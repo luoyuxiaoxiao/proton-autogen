@@ -3,253 +3,61 @@
 # Proton-Autogen Help System
 # English (default) / Français
 
-import locale
+from pathlib import Path
+import os
+from proton_autogen.i18n import detect_help_env_lang
 
 
-def get_language():
-    lang = locale.setlocale(locale.LC_ALL, "")
-    return "fr" if lang.lower().startswith("fr") else "en"
+DEV_DOCS = Path(__file__).parent / "docs"
+SYS_DOCS = Path("/usr/share/proton-autogen/docs")
 
 
-HELP_TEXT = {
+def get_docs_root():
+    if DEV_DOCS.exists():
+        return DEV_DOCS
+    return SYS_DOCS
 
-###############################################################################
-# ENGLISH
-###############################################################################
 
-"en": """PROTON-AUTOGEN - HELP
+def get_help_text():
+    root = get_docs_root()
+    lang = detect_help_env_lang()
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-USAGE
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen <file.exe>
-proton-autogen run <file.exe>
-proton-autogen add <file.exe>
-proton-autogen edit <file.exe>
+    candidates = [
+        f"help_{lang}.txt",
+        "help_en.txt"
+    ]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-INFORMATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---ux        GTK4 interface
---v         version
---about     about information
---help      display this help
---help-env  environment help
+    for file in candidates:
+        path = root / file
+        if path.exists():
+            return path.read_text(encoding="utf-8")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-PREFIX SYSTEM
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEAM_COMPAT_DATA_PATH
+    return "📄 Documentation not available."
 
---pc        custom prefix
---pa        automatic prefix
---ps        shared prefix
-default     main prefix
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-PROFILES
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---json-profile
---profile dx11
+def get_mangohud_model_text():
+    root = get_docs_root()
+    lang = detect_help_env_lang()
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-DISCOVERY
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---list-protons
---list-programs
---proton-paths
---diag
+    candidates = [
+        f"mangohud_{lang}.txt",
+        "mangohud_en.txt"
+    ]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXECUTION
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen game.exe
-proton-autogen run game.exe
+    for file in candidates:
+        path = root / file
+        if path.exists():
+            return path.read_text(encoding="utf-8")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-OPTIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---debug
---verbose
---mangohud
---gamemode
---wine
---proton
+    return "📄 Documentation not available."
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXAMPLES
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen game.exe
-proton-autogen game.exe --gamemode --mangohud
-gamescope -f -- proton-autogen game.exe
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-NOTES
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Automatic Proton selection
-- Wine fallback
-- Steam / Flatpak support
+def afficher_helps():
+    print(get_help_text())
 
-""",
 
-###############################################################################
-# FRANÇAIS
-###############################################################################
-
-"fr": """PROTON-AUTOGEN - AIDE
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-UTILISATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen <fichier.exe>
-proton-autogen run <fichier.exe>
-proton-autogen add <fichier.exe>
-proton-autogen edit <fichier.exe>
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-INFORMATIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---ux        Interface GTK4
---v         version
---about     informations
---help      afficher cette aide
---help-env  aide sur l'environnement
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-SYSTÈME DE PRÉFIXES
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEAM_COMPAT_DATA_PATH
-
---pc        préfixe personnalisé
---pa        préfixe automatique
---ps        préfixe partagé
-par défaut  préfixe principal
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-PROFILS
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---json-profile
---profile dx11
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-DÉCOUVERTE
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---list-protons
---list-programs
---proton-paths
---diag
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXÉCUTION
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen game.exe
-proton-autogen run game.exe
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-OPTIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---debug
---verbose
---mangohud
---gamemode
---wine
---proton
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-EXEMPLES
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen game.exe
-proton-autogen game.exe --gamemode --mangohud
-gamescope -f -- proton-autogen game.exe
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-NOTES
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Sélection automatique de Proton
-- Repli sur Wine
-- Compatible Steam / Flatpak
-
-""",
-
-###############################################################################
-# CHINESE (Simplified)
-###############################################################################
-
-"zh": """PROTON-AUTOGEN - 帮助
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-用法
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen <file.exe>
-proton-autogen run <file.exe>
-proton-autogen add <file.exe>
-proton-autogen edit <file.exe>
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-信息
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---ux        GTK4 图形界面
---v         版本
---about     关于信息
---help      显示此帮助
---help-env  环境帮助
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-前缀系统
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEAM_COMPAT_DATA_PATH
-
---pc        自定义前缀
---pa        自动前缀
---ps        共享前缀
-default     主前缀
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-配置文件
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---json-profile
---profile dx11
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-发现
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---list-protons
---list-programs
---proton-paths
---diag
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-执行
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen game.exe
-proton-autogen run game.exe
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-选项
-━━━━━━━━━━━━━━━━━━━━━━━━━━
---debug
---verbose
---mangohud
---gamemode
---wine
---proton
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-示例
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-proton-autogen game.exe
-proton-autogen game.exe --gamemode --mangohud
-gamescope -f -- proton-autogen game.exe
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-备注
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 自动选择 Proton
-- Wine 备用方案
-- 支持 Steam / Flatpak
-
-"""
-}
+def afficher_helps_label():
+    return get_help_text()
 
 
 CLI_HELP = {
@@ -484,10 +292,11 @@ Execution:
 
 Options:
 
-  --debug        Debug output
-  --verbose      Verbose output
-  --mangohud     Enable MangoHud overlay
-  --gamemode     Enable GameMode
+  --debug        Enable debug output
+  --verbose      Enable verbose output
+  --mangohud     Enable MangoHud: FPS, frame timing and performance overlay
+  --gamemode     Enable GameMode: Optimize system performance for gaming
+  --gamescope    Enable Gamescope: allows setting an internal resolution, refresh rate and various display options
   --call         Use Proton-Call
   --wine         Use Wine
   --proton       Use Proton only (default)
@@ -521,7 +330,9 @@ Notes:
   - Falls back to Wine if Proton is unavailable
   - Supports Steam, Flatpak, and compatibilitytools installs
   - Configure custom Proton locations with
-    ~/.config/proton-autogen.conf
+    ~/.config//proton-autogen/proton-autogen.conf
+  - Config UX:
+    ~/.config//proton-autogen/proton-autogen-ux.conf
 """,
 
 ###############################################################################
@@ -547,8 +358,9 @@ Options :
 
   --debug        Mode débogage
   --verbose      Mode verbeux
-  --mangohud     Activer MangoHud
-  --gamemode     Activer GameMode
+  --mangohud     Activer MangoHud : affichage des FPS et des informations de performance.
+  --gamemode     Activer GameMode : optimisation des performances.
+  --gamescope    Activer Gamescope : permet de définir une résolution interne, un taux de rafraîchissement et diverses options d'affichage.
   --call         Utiliser Proton-Call
   --wine         Utiliser Wine
   --proton       Utiliser uniquement Proton (par défaut)
@@ -582,7 +394,9 @@ Notes :
   - Utilise Wine si Proton n'est pas disponible
   - Compatible avec Steam, Flatpak et compatibilitytools
   - Configurer des emplacements Proton personnalisés avec
-    ~/.config/proton-autogen.conf
+    ~/.config//proton-autogen/proton-autogen.conf
+  - Config UX:
+    ~/.config//proton-autogen/proton-autogen-ux.conf
 """,
 
 ###############################################################################
@@ -607,8 +421,9 @@ Notes :
 
   --debug        调试输出
   --verbose      详细输出
-  --mangohud     启用 MangoHud 叠加层
-  --gamemode     启用 GameMode
+  --mangohud     启用 MangoHud：显示 FPS、帧时间和性能信息
+  --gamemode     启用 GameMode：优化游戏性能
+  --gamescope    启用 Gamescope：可设置内部渲染分辨率、刷新率以及其他显示选项
   --call         使用 Proton-Call
   --wine         使用 Wine
   --proton       仅使用 Proton（默认）
@@ -641,17 +456,16 @@ Notes :
   - 自动选择最佳 Proton 版本
   - 如果 Proton 不可用则回退到 Wine
   - 支持 Steam、Flatpak 和 compatibilitytools 安装
-  - 可在 ~/.config/proton-autogen.conf 配置自定义 Proton 路径
+  - 可在 ~/.config/proton-autogen/proton-autogen.conf 配置自定义 Proton 路径
+  - Config UX:
+    ~/.config//proton-autogen/proton-autogen-ux.conf
 """
 }
 
-def get_help_text(lang=None):
-    lang = lang or get_language()
-    return HELP_TEXT.get(lang, HELP_TEXT["en"])
-
 
 def print_help(lang=None):
-    lang = lang or get_language()
+    if lang is None:
+        lang = detect_help_env_lang()
 
     print(CLI_HELP.get(lang, CLI_HELP["en"]))
     print(CLI_HELP_2.get(lang, CLI_HELP_2["en"]))
@@ -672,10 +486,18 @@ TR = {
         "notes": "Notes",
         "about": "À propos",
     },
+    "zh": {
+        "usage": "用法",
+        "options": "选项",
+        "examples": "示例",
+        "notes": "备注",
+        "about": "关于",
+    },
 }
 
 def get_tr(key, lang=None):
-    lang = lang or get_language()
+    if lang is None:
+        lang = detect_help_env_lang()
     return TR.get(lang, TR["en"]).get(key, key)
 
 #---------------------------------------------------------------------------------------------------------------------------

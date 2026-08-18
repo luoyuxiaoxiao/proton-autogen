@@ -344,6 +344,13 @@ checkbutton.feature-toggle:checked label {
     font-size:14px;
 }
 
+.form-label {
+    color:
+        rgba(255,255,255,0.70);
+    font-weight: 600;
+    font-size: 13px;
+}
+
 .label-bottom {
     color: white;
     font-size: 16px;
@@ -447,10 +454,8 @@ label.home-label {
 
 
 .badge {
-    padding: 2px 9px;
-    margin-left: 4px;
-
     border-radius: 999px;
+    padding: 4px 8px;
 
     font-size: 10px;
     font-weight: 700;
@@ -751,7 +756,7 @@ dropdown > button:active {
 combobox > button:focus,
 dropdown > button:focus {
 
-    outline: 2px solid @accent_color;
+    outline: 2px solid @accent;
     outline-offset: 1px;
 }
 
@@ -761,4 +766,121 @@ dropdown label {
     color: #f0f0f0;
     font-weight: 500;
     background: transparent;
+}
+
+/* SearchEntry */
+
+/* Entrées de texte */
+entry,
+searchentry {
+    background: #111111;
+    color: white;
+
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 8px;
+
+    padding: 6px 10px;
+}
+
+/* Zone de texte interne */
+entry text,
+searchentry text {
+    background: transparent;
+    color: white;
+}
+
+/* Icônes (loupe, effacer, etc.) */
+entry image,
+searchentry image {
+    color: rgba(255,255,255,0.80);
+}
+
+/* Texte d'indication (placeholder) */
+entry placeholder,
+searchentry placeholder {
+    color: rgba(255,255,255,0.45);
+}
+
+/* Survol */
+entry:hover,
+searchentry:hover {
+    border-color: rgba(255,255,255,0.50);
+}
+
+/* Focus */
+entry:focus,
+searchentry:focus {
+    border-color: @accent;
+    box-shadow: 0 0 0 2px alpha(@accent, 0.25);
+}
+
+/* Désactivé */
+entry:disabled,
+searchentry:disabled {
+    opacity: 0.5;
+}
+
+
+/* GAME ICON */
+.game-icon {
+
+    min-width:48px;
+    min-height:48px;
+
+    border-radius:4px;
+
+    background: rgba(255,255,255,0.15);
+    box-shadow:
+        0 0 10px rgba(255,255,255,0.15);
+
+    padding:2px;
+}
+
+.game-icon:hover {
+
+    background:
+        rgba(61,255,138,0.05);
+
+    box-shadow:
+        0 0 10px rgba(61,255,138,0.15);
+}
+
+
+/* -------------------------------------------------
+   FPS limit SpinButton : texte blanc / fond noir transparent
+   ------------------------------------------------- */
+
+/* Conteneur global du spinbutton */
+.fps-spinbutton {
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    border: none;
+}
+
+/* Zone de saisie du nombre (nœud "text" en GTK4) */
+.fps-spinbutton text {
+    background-color: transparent;
+    color: #ffffff;
+    caret-color: #ffffff;
+}
+
+.fps-spinbutton text selection {
+    background-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+/* Boutons flèches haut/bas */
+.fps-spinbutton button {
+    background-color: transparent;
+    color: #ffffff;
+    border: none;
+    box-shadow: none;
+}
+
+.fps-spinbutton button:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.fps-spinbutton button:active {
+    background-color: rgba(255, 255, 255, 0.2);
 }
