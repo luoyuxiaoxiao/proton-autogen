@@ -110,6 +110,12 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None):
 
             cfg_mangohud = normalize_flag(features.get("mangohud"), False)
             cfg_gamemode = normalize_flag(features.get("gamemode"), False)
+
+            # 核心启动链路：先把游戏专属环境写入当前进程，后续 base_env()/init_env()
+            # 会复制这些变量，确保 MangoHud 隐藏叠层与限帧等配置不会丢失。
+            for key, value in config.get("env", {}).items():
+                os.environ[str(key)] = str(value)
+
             # Load features -----------------------------------------------
             rfeatures = resolve_game_features(
                 {"features": features},

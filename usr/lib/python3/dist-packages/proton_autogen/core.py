@@ -789,6 +789,9 @@ def run_game_proton(exe_path, exe_type, proton,
     if enable_mangohud and has_mangohud():
         env["MANGOHUD"] = "1"
         env["MANGOHUD_DLSYM"] = "1"
+        # 核心配置优先级：保留游戏条目或 .desktop 传入的 MangoHud 设置。
+        # 这样可以同时做到隐藏 HUD(no_display) 与 60 FPS 限制。
+        env["MANGOHUD_CONFIG"] = env.get("MANGOHUD_CONFIG", "fps_limit=60")
         env["DXVK_HUD"] = "0"
 
         # FPS cap only if needed
