@@ -1,0 +1,39 @@
+name: Sync Upstream
+
+# 定时把 N3oRay/proton-autogen 的 main 合并到本 fork（merge 而非 reset，
+# 保留 fork 自有改动如游戏 env 透传、MangoHud 配置保留等补丁）。
+# 上游 package.yml 在 tag 上自动构建 deb/arch/flatpak 并发布，
+# 同步后上游新 tag 会自动落到 fork（tags 随 fetch 同步）。
+# 同步冲突时 job 失败并保留现场，需人工手动 merge 后 push。
+on:
+  schedule:
+    - cron: "37 3 * * *" # 每天 03:37 UTC，避开整点高峰
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Merge upstream main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_PAT }}
+
+      - name: Merge upstream main
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/N3oRay/proton-autogen.git 2>/dev/null || true
+          git fetch upstream --tags
+          git checkout main
+          # 快进则快进，否则 merge（保留 fork 自有改动）；冲突即失败，人工处理。
+          git merge --no-edit upstream/main || {
+            echo "CONFLICT: upstream 与 fork 改动冲突，需人工手动 merge 后 push。"
+            git status --short
+            exit 1
+          }
+          git push origin main
+          git push origin --tags
