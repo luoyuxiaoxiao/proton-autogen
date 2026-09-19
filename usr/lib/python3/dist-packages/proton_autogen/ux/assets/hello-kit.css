@@ -34,6 +34,10 @@
 @define-color kde-surface2 #1e1e1e;
 @define-color kde-dark-text #eeeeee;
 
+/* Alias requis par les règles de focus clavier (:focus/:focus-visible)
+   plus bas dans ce fichier, qui référencent @accent. */
+@define-color accent @hk_accent;
+
 
 
 /* =========================================================
@@ -52,6 +56,42 @@ label, entry, text, textview {
 .app-button,
 button.suggested-action {
     color: @kawaii-pink-dark;
+}
+
+
+/*
+button.suggested-action {
+    background: #4caf50;
+    color: white;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+button.suggested-action:hover {
+    background: #43a047;
+}
+*/
+
+button.alternative-action {
+    background: #7e57c2;
+    color: @kawaii-pink-dark;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+button.alternative-action:hover {
+    background: #6a46b1;
+}
+
+button.destructive-action {
+    background: #f44336;
+    color: @kawaii-pink-dark;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+button.destructive-action:hover {
+    background: #e53935;
 }
 
 /* =========================================================
@@ -205,17 +245,20 @@ button.suggested-action:hover {
     background: rgba(255,250,253,0.95);
 }
 
+.status-box {
+    background: alpha(@theme_fg_color,0.12);
+}
 
 .section-toggle {
-    background: transparent;
+    background: alpha(@theme_fg_color,0.12);
     color: white;
-    border-radius: 8px;
-    padding: 6px 12px;
+    border-radius: 6px;
+    padding: 3px 6px;
     font-size: 11px;
 }
 
 .section-toggle:hover {
-    background: alpha(@theme_fg_color,0.12);
+    background: alpha(@theme_fg_color,0.24);
 }
 
 .btn-launch {
@@ -397,6 +440,8 @@ label.home-label {
     color: @hk_text;
     font-size: 14px;
     margin-left: 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.04);
 }
 
 
@@ -428,7 +473,7 @@ label.home-label {
     color: @hk_muted;
 }
 
-.dialog-content {
+.dialog-content, .import-dialog {
     background: rgba(255,250,253,0.96);
     border: 1px solid @hk_border;
     border-radius: 16px;
@@ -450,7 +495,7 @@ label.home-label {
     border-color: rgba(255,105,180,0.12);
 }
 
-.badge.profile {
+.badge-protondb, .badge.profile {
     background: linear-gradient(180deg, #ffeef8, #ffddec);
     border-color: rgba(80,140,255,0.20);
     color: @hk_text;
@@ -861,4 +906,386 @@ popover.menu menuitem image {
 
 popover.menu modelbutton.submenu arrow {
     color: @hk_text;
+}
+
+
+.status-history-panel {
+    padding: 6px;
+    border: 1px solid rgba(255,255,255,0.04);
+    background:
+        linear-gradient(
+            180deg,
+            #fffefd,
+            #fff0fa
+        );
+    border-radius: 6px;
+}
+
+.status-history-entry {
+    font-size: 0.9em;
+}
+
+.status-history-error {
+    color: #e05252;
+}
+
+.status-history-success {
+    color: #4caf78;
+}
+
+/* =========================================================
+ * GAME GRID — HELLO KITTY EDITION
+ * ========================================================= */
+
+/* Conteneur général */
+.game-grid {
+    padding: 8px;
+    background-color: transparent;
+}
+
+.game-grid scrolledwindow {
+    background-color: transparent;
+}
+
+/* ---------------------------------------------------------
+ * CARTE
+ * --------------------------------------------------------- */
+
+.game-grid-card {
+    min-width: 0;
+    min-height: 0;
+
+    margin: 4px;
+    padding: 8px;
+
+    border-radius: 16px;
+
+    background-color: rgba(255, 250, 253, 0.72);
+
+    border: 1px solid rgba(255, 214, 232, 0.75);
+
+    box-shadow:
+        0 3px 10px rgba(194, 24, 91, 0.06),
+        inset 0 1px 0 rgba(255,255,255,0.75);
+
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        box-shadow 150ms ease,
+        transform 150ms ease;
+}
+
+/* ---------------------------------------------------------
+ * SURVOL
+ * --------------------------------------------------------- */
+
+.game-grid-card:hover {
+    background-color: rgba(255, 241, 247, 0.96);
+
+    border-color: rgba(255, 143, 196, 0.75);
+
+    box-shadow:
+        0 7px 18px rgba(255, 105, 180, 0.16),
+        0 0 0 1px rgba(255, 182, 217, 0.20),
+        inset 0 1px 0 rgba(255,255,255,0.90);
+}
+
+/* ---------------------------------------------------------
+ * APPUI / CLIC
+ *
+ * Important :
+ * GTK applique :active pendant le clic.
+ * On accentue volontairement cet état.
+ * --------------------------------------------------------- */
+
+.game-grid-card:active {
+    background-color: rgba(255, 221, 236, 0.98);
+
+    border-color: @hk_accent;
+
+    box-shadow:
+        0 2px 7px rgba(255, 105, 180, 0.18),
+        0 0 0 2px rgba(255, 105, 180, 0.12),
+        inset 0 2px 5px rgba(194, 24, 91, 0.08);
+}
+
+/* ---------------------------------------------------------
+ * FOCUS
+ * --------------------------------------------------------- */
+
+.game-grid-card:focus,
+.game-grid-card:focus-visible {
+    outline: 2px solid rgba(255, 105, 180, 0.45);
+    outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------
+ * ICÔNE
+ * --------------------------------------------------------- */
+
+.game-grid-icon-holder {
+    min-width: 0;
+    min-height: 0;
+
+    border-radius: 10px;
+
+    background-color: rgba(255,255,255,0.28);
+
+    box-shadow:
+        0 2px 7px rgba(194, 24, 91, 0.05),
+        inset 0 1px 0 rgba(255,255,255,0.60);
+}
+
+.game-grid-icon {
+    border-radius: 8px;
+
+    box-shadow:
+        0 3px 10px rgba(101, 41, 106, 0.10);
+}
+
+/* ---------------------------------------------------------
+ * TITRE
+ * --------------------------------------------------------- */
+
+.game-grid-title {
+    color: @hk_text;
+
+    font-weight: 600;
+    font-size: 1em;
+
+    margin-left: 2px;
+    margin-right: 2px;
+
+    text-shadow:
+        0 1px 1px rgba(255,255,255,0.75);
+}
+
+/* ---------------------------------------------------------
+ * BADGES
+ * --------------------------------------------------------- */
+
+.game-grid-badges {
+    min-height: 8px;
+
+    margin-top: 2px;
+}
+
+/* ---------------------------------------------------------
+ * TOOLBAR GRID
+ * --------------------------------------------------------- */
+
+.game-grid-toolbar {
+    padding: 4px 8px;
+}
+
+.game-grid-toolbar .section-toggle {
+    background: rgba(255, 182, 217, 0.70);
+
+    color: @hk_text;
+
+    border: 1px solid rgba(255, 143, 196, 0.35);
+    border-radius: 9px;
+
+    padding: 4px 9px;
+
+    box-shadow:
+        0 2px 6px rgba(255, 105, 180, 0.08);
+}
+
+.game-grid-toolbar .section-toggle:hover {
+    background: rgba(255, 143, 196, 0.80);
+
+    color: white;
+
+    border-color: rgba(255, 105, 180, 0.55);
+
+    box-shadow:
+        0 4px 10px rgba(255, 105, 180, 0.14);
+}
+
+.game-grid-toolbar .section-toggle:active {
+    background: @hk_accent;
+
+    color: white;
+
+    box-shadow:
+        inset 0 2px 4px rgba(194, 24, 91, 0.18);
+}
+
+/* =========================================================
+ * NAVIGATION CLAVIER / FOCUS
+ * ========================================================= */
+.btn-delete:focus-visible,
+.btn-export:focus-visible,
+.btn-install:focus-visible,
+.btn-edit:focus-visible,
+.btn-launch:focus-visible,
+.badge-clickable:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+popover modelbutton:focus-visible,
+popover menuitem:focus-visible {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+
+/* Boutons */
+button:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Focus clavier plus discret pour les boutons d'action */
+.btn-delete:focus,
+.btn-export:focus,
+.btn-install:focus,
+.btn-edit:focus,
+.btn-launch:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Badge ProtonDB cliquable */
+.badge-clickable:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Entrées texte */
+entry:focus,
+searchentry:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* ListView */
+.game-list:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Éléments de menu / popover */
+popover modelbutton:focus,
+popover menuitem:focus {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+/* Boutons de popover */
+popover button:focus {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+
+    outline: 2px solid @accent;
+    outline-offset: 1px;
+}
+
+
+/* =========================================================
+ * ACCESSIBILITÉ CLAVIER (complément)
+ * - Icône de jeu (grille) : Gtk.Button focusable au Tab, activable
+ *   à Entrée/Espace -> anneau de focus manquant du bloc précédent.
+ * - Fenêtre "Raccourcis clavier" (menu, ou Ctrl+? / Ctrl+/).
+ * ========================================================= */
+
+.game-grid-icon-holder:focus,
+.game-grid-icon-holder:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+.game-grid-context-menu button:focus,
+.game-grid-context-menu button:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+.shortcuts-window {
+    background: @hk_panel;
+    border-radius: 16px;
+}
+
+.shortcuts-list {
+    background: transparent;
+}
+
+.shortcuts-list row {
+    background: transparent;
+    border-radius: 8px;
+}
+
+.shortcuts-list row:hover {
+    background: @hk_hover;
+}
+
+.shortcuts-list row:focus,
+.shortcuts-list row:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+    border-radius: 8px;
+}
+
+.shortcut-key {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: @hk_soft;
+    border: 1px solid @hk_border;
+    color: @hk_text;
+}
+
+.save-backup-path {
+    font-size: 0.75em;
+    color: alpha(@theme_fg_color, 0.55);
+}
+
+.save-backup-dialog, .save-manager-dialog{
+    background-color: @hk_panel;
+    padding: 2px 8px;
+    border-radius:16px;
+    color:white;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+.title-5, .save-history-list{
+    background-color: alpha(@kawaii-pink, 0.25);
+    padding: 2px 8px;
+    border-radius:16px;
+    color:white;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255, 143, 196, 0.35);
+}
+
+.save-location-path{
+    background-color: @hk_panel;
+    padding: 2px 8px;
+    border-radius:8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+.launch-dialog spinner {
+    color: #ff69b4;
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(255, 105, 180, 0.55));
+    animation:
+        spin 1s linear infinite,
+        pa-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pa-pulse {
+    0%   { filter: drop-shadow(0 0 4px rgba(255, 105, 180, 0.35)); }
+    50%  { filter: drop-shadow(0 0 10px rgba(255, 105, 180, 0.75)); }
+    100% { filter: drop-shadow(0 0 4px rgba(255, 105, 180, 0.35)); }
 }

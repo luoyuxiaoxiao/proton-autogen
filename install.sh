@@ -13,13 +13,13 @@ fi
 PM=""
 
 case "${ID:-}" in
-    arch|cachyos)
+    arch|endeavouros|cachyos|garuda|manjaro|arcolinux|rebornos)
         PM="pacman"
         ;;
-    debian|ubuntu|linuxmint|pop)
+    debian|ubuntu|linuxmint|pop|elementary|zorin)
         PM="apt"
         ;;
-    fedora)
+    fedora|nobara)
         PM="dnf"
         ;;
     *)
@@ -41,8 +41,12 @@ install_deps() {
                 python-gobject \
                 python-pyyaml \
                 python-rich \
+                python-requests \
+                python-psutil \
+                python-xlib \
                 gtk4 \
                 gdk-pixbuf2 \
+                graphene
             ;;
         apt)
             sudo apt update
@@ -52,7 +56,11 @@ install_deps() {
                 python3-yaml \
                 python3-cairo \
                 python3-rich \
+                python3-requests \
+                python3-psutil \
+                python3-xlib \
                 gir1.2-gtk-4.0 \
+                gir1.2-graphene-1.0 \
                 gir1.2-gdkpixbuf-2.0 \
                 gir1.2-pango-1.0 \
                 libglib2.0-0 \
@@ -64,7 +72,11 @@ install_deps() {
                 python3-gobject \
                 python3-pyyaml \
                 python3-rich \
+                python3-requests \
+                python3-psutil \
+                python3-xlib \
                 gtk4 \
+                graphene \
                 gdk-pixbuf2
             ;;
     esac
@@ -111,7 +123,7 @@ install_file_manager_integrations() {
         echo "==> Installing KDE service menu..."
 
         sudo install -Dm644 \
-            share/kio/servicemenus/proton-autogen.desktop \
+            usr/share/kio/servicemenus/proton-autogen.desktop \
             /usr/share/kio/servicemenus/proton-autogen.desktop
     else
         echo "==> KDE/KIO not detected. Skipping KDE service menu."
@@ -125,7 +137,7 @@ install_file_manager_integrations() {
         echo "==> Installing Nautilus extension..."
 
         sudo install -Dm644 \
-            share/nautilus-python/extensions/proton_autogen_nautilus.py \
+            usr/share/nautilus-python/extensions/proton_autogen_nautilus.py \
             /usr/share/nautilus-python/extensions/proton_autogen_nautilus.py
     else
         echo "==> Nautilus not detected. Skipping Nautilus extension."
@@ -139,12 +151,14 @@ install_file_manager_integrations() {
         echo "==> Installing Nemo action..."
 
         sudo install -Dm644 \
-            share/nemo/actions/proton-autogen.nemo_action \
+            usr/share/nemo/actions/proton-autogen.nemo_action \
             /usr/share/nemo/actions/proton-autogen.nemo_action
     else
         echo "==> Nemo not detected. Skipping Nemo action."
     fi
 }
+
+install_file_manager_integrations
 
 echo "==> Installing Python module..."
 

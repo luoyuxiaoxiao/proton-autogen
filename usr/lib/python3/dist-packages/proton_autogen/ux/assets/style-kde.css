@@ -12,6 +12,10 @@
 @define-color kde-surface2 #1e1e1e;
 @define-color kde-dark-text #eeeeee;
 
+/* Alias requis par les règles de focus clavier (:focus/:focus-visible)
+   plus bas dans ce fichier, qui référencent @accent. */
+@define-color accent @kde-blue-dark;
+
 /* =========================================================
    Text
    ========================================================= */
@@ -177,6 +181,13 @@ button.suggested-action:hover {
     color: @kde-text;
 }
 
+.app-button:focus {
+
+    outline:2px solid @accent;
+    outline-offset:2px;
+}
+
+
 .app-button:hover {
     background: linear-gradient(
         to bottom,
@@ -187,17 +198,22 @@ button.suggested-action:hover {
     border-color: @kde-blue;
 }
 
+.status-box {
+    background: alpha(@theme_fg_color,0.12);
+}
+
 .section-toggle {
-    background: transparent;
+    background: alpha(@theme_fg_color,0.12);
     color: white;
-    border-radius: 8px;
-    padding: 6px 12px;
+    border-radius: 6px;
+    padding: 3px 6px;
     font-size: 11px;
 }
 
 .section-toggle:hover {
-    background: alpha(@theme_fg_color,0.12);
+    background: alpha(@theme_fg_color,0.24);
 }
+
 
 .btn-launch {
     background: #2ecc71;
@@ -324,6 +340,8 @@ label.home-label {
     padding: 6px;
     color: @kde-text;
     font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.04);
 }
 
 
@@ -374,13 +392,21 @@ label.home-label {
 
 
 .badge {
-    border-radius:6px;
-    border-radius: 12px;
-    padding: 4px 8px;
-    background: #eef2f7;
+
     color: @kde-text;
-    border: 1px solid @kde-border;
-    font-weight:bold;
+    padding: 2px 2px;
+    background:
+        linear-gradient(
+            180deg,
+            rgba(20,45,30,.90),
+            rgba(12,25,18,.90)
+        );
+
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 12px;
+
+    box-shadow:
+        0 0 6px @kde-text;
 }
 
 .badge:hover {
@@ -406,7 +432,7 @@ label.home-label {
     color: #2980b9;
 }
 
-.badge.profile {
+.badge-protondb, .badge.profile {
     background:#dff2ff;
     color:#5f82b0;
 }
@@ -712,4 +738,494 @@ popover label {
 
     box-shadow:
     0 0 10px rgba(90, 100, 115,0.35);
+}
+
+
+.status-history-panel {
+    padding: 6px;
+    border: 1px solid rgba(255,255,255,0.04);
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255,255,255,0.85),
+            rgba(128,128,128,0.75)
+        );
+    border-radius: 6px;
+}
+
+.status-history-entry {
+    font-size: 0.9em;
+}
+
+.status-history-error {
+    color: #e05252;
+}
+
+.status-history-success {
+    color: #4caf78;
+}
+
+/* -------------------------------------------------
+   GAME GRID — KDE STYLE
+   ------------------------------------------------- */
+
+.game-grid {
+    padding: 8px;
+    background-color: transparent;
+}
+
+.game-grid scrolledwindow {
+    background-color: transparent;
+}
+
+
+/* =================================================
+   CARTE
+   ================================================= */
+
+.game-grid-card {
+    min-width: 0;
+    min-height: 0;
+
+    margin: 4px;
+    padding: 8px;
+
+    border-radius: 8px;
+
+    background-color: @kde-surface;
+
+    border: 1px solid @kde-border;
+
+    box-shadow:
+        0 1px 3px rgba(35, 38, 41, 0.08);
+
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        box-shadow 120ms ease;
+}
+
+
+/* =================================================
+   SURVOL
+   ================================================= */
+
+.game-grid-card:hover {
+    background-color: #ffffff;
+
+    border-color: @kde-blue;
+
+    box-shadow:
+        0 3px 8px rgba(35, 38, 41, 0.12);
+}
+
+
+/* =========================================================
+ * ACTIVE / CLIC
+ * ========================================================= */
+
+.game-grid-card:active {
+    background-color: #dce8f3;
+
+    border-color: @kde-blue-dark;
+
+    box-shadow:
+        inset 0 2px 4px rgba(35, 38, 41, 0.12),
+        0 1px 2px rgba(35, 38, 41, 0.08);
+}
+
+
+/* =================================================
+   FOCUS
+   ================================================= */
+
+.game-grid-card:focus,
+.game-grid-card:focus-visible {
+    outline: 2px solid alpha(@kde-blue, 0.55);
+    outline-offset: 2px;
+}
+
+
+/* =========================================================
+ * ICON HOLDER
+ * ========================================================= */
+
+.game-grid-icon-holder {
+    min-width: 0;
+    min-height: 0;
+
+    border-radius: 7px;
+
+    background-color: rgba(255,255,255,0.65);
+
+    box-shadow:
+        inset 0 1px 2px rgba(35, 38, 41, 0.05);
+}
+
+
+/* =========================================================
+ * ICON
+ * ========================================================= */
+
+.game-grid-icon {
+    border-radius: 6px;
+
+    box-shadow:
+        0 2px 6px rgba(35, 38, 41, 0.12);
+}
+
+
+/* =================================================
+   TITRE
+   ================================================= */
+
+.game-grid-title {
+    color: @kde-text;
+
+    font-weight: 600;
+    font-size: 1em;
+
+    margin-left: 2px;
+    margin-right: 2px;
+}
+
+
+/* =================================================
+   BADGES
+   ================================================= */
+
+.game-grid-badges {
+    min-height: 8px;
+    margin-top: 2px;
+}
+
+
+/* =================================================
+   TOOLBAR GRID
+   ================================================= */
+
+.game-grid-toolbar {
+    padding: 4px 8px;
+}
+
+
+/*
+ * Boutons Zoom
+ */
+
+.game-grid-toolbar .section-toggle {
+    background: @kde-surface;
+
+    color: @kde-text;
+
+    border: 1px solid @kde-border;
+    border-radius: 6px;
+
+    padding: 4px 10px;
+
+    box-shadow:
+        0 1px 2px rgba(35, 38, 41, 0.06);
+}
+
+.game-grid-toolbar .section-toggle:hover {
+    background: #ffffff;
+
+    border-color: @kde-blue;
+
+    color: @kde-blue-dark;
+}
+
+.game-grid-toolbar .section-toggle:active {
+    background: #dce8f3;
+
+    border-color: @kde-blue-dark;
+
+    color: @kde-blue-dark;
+
+    box-shadow:
+        inset 0 2px 3px rgba(35, 38, 41, 0.10);
+}
+
+
+/* =================================================
+   INDICATEUR DE TAILLE
+   ================================================= */
+
+.game-grid-toolbar label {
+    color: @kde-text2;
+}
+
+/* =========================================================
+ * GAME GRID — CONTEXT MENU — KDE STYLE
+ * ========================================================= */
+
+.game-grid-context-menu {
+    padding: 4px;
+
+    border-radius: 7px;
+
+    background: @kde-surface;
+
+    border: 1px solid @kde-border;
+
+    box-shadow:
+        0 5px 16px rgba(35, 38, 41, 0.16);
+}
+
+
+/* ---------------------------------------------------------
+   Boutons
+   --------------------------------------------------------- */
+
+.game-grid-context-menu button {
+    min-height: 26px;
+
+    padding: 5px 10px;
+
+    border-radius: 5px;
+    border: 1px solid transparent;
+
+    box-shadow: none;
+
+    color: @kde-text;
+    background: transparent;
+}
+
+
+/* ---------------------------------------------------------
+   Hover
+   --------------------------------------------------------- */
+
+.game-grid-context-menu button:hover {
+    background: #e8f4ff;
+
+    border-color: alpha(@kde-blue, 0.20);
+
+    color: @kde-text;
+}
+
+
+/* ---------------------------------------------------------
+   Active
+   --------------------------------------------------------- */
+
+.game-grid-context-menu button:active {
+    background: #dce8f3;
+
+    border-color: alpha(@kde-blue, 0.35);
+
+    box-shadow:
+        inset 0 1px 3px rgba(35, 38, 41, 0.10);
+}
+
+
+/* ---------------------------------------------------------
+   Suppression
+   --------------------------------------------------------- */
+
+.game-grid-context-menu .game-grid-menu-delete {
+    color: #c0392b;
+}
+
+.game-grid-context-menu .game-grid-menu-delete:hover {
+    background: #fdecec;
+
+    border-color: #e6a5a0;
+
+    color: #b52b20;
+}
+
+.game-grid-context-menu .game-grid-menu-delete:active {
+    background: #f5d6d3;
+
+    border-color: #d9534f;
+}
+
+
+/* ---------------------------------------------------------
+   Séparateur
+   --------------------------------------------------------- */
+
+.game-grid-context-menu separator {
+    margin: 4px 2px;
+
+    min-height: 1px;
+
+    background: @kde-border;
+}
+
+/* =========================================================
+ * NAVIGATION CLAVIER / FOCUS
+ * ========================================================= */
+.btn-delete:focus-visible,
+.btn-export:focus-visible,
+.btn-install:focus-visible,
+.btn-edit:focus-visible,
+.btn-launch:focus-visible,
+.badge-clickable:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+popover modelbutton:focus-visible,
+popover menuitem:focus-visible {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+/* Boutons */
+button:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Focus clavier plus discret pour les boutons d'action */
+.btn-delete:focus,
+.btn-export:focus,
+.btn-install:focus,
+.btn-edit:focus,
+.btn-launch:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Badge ProtonDB cliquable */
+.badge-clickable:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Entrées texte */
+entry:focus,
+searchentry:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* ListView */
+.game-list:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Éléments de menu / popover */
+popover modelbutton:focus,
+popover menuitem:focus {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+/* Boutons de popover */
+popover button:focus {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+
+    outline: 2px solid @accent;
+    outline-offset: 1px;
+}
+
+
+/* =========================================================
+ * ACCESSIBILITÉ CLAVIER (complément)
+ * - Icône de jeu (grille) : Gtk.Button focusable au Tab, activable
+ *   à Entrée/Espace -> anneau de focus manquant du bloc précédent.
+ * - Fenêtre "Raccourcis clavier" (menu, ou Ctrl+? / Ctrl+/).
+ * ========================================================= */
+
+.game-grid-icon-holder:focus,
+.game-grid-icon-holder:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+.game-grid-context-menu button:focus,
+.game-grid-context-menu button:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+.shortcuts-window {
+    background: @kde-surface;
+    border-radius: 16px;
+}
+
+.shortcuts-list {
+    background: transparent;
+}
+
+.shortcuts-list row {
+    background: transparent;
+    border-radius: 8px;
+}
+
+.shortcuts-list row:hover {
+    background: alpha(@kde-blue, 0.10);
+}
+
+.shortcuts-list row:focus,
+.shortcuts-list row:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+    border-radius: 8px;
+}
+
+.shortcut-key {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: @kde-bg;
+    border: 1px solid @kde-border;
+    color: @kde-text;
+}
+
+.save-backup-path {
+    font-size: 0.75em;
+    color: alpha(@theme_fg_color, 0.55);
+}
+
+.save-backup-dialog, .save-manager-dialog{
+    background: rgba(15,15,15,0.92);
+    padding: 2px 8px;
+    border-radius:16px;
+    color:white;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+.title-5, .save-history-list{
+    background: rgba(124, 92, 255, 0.25);
+    padding: 2px 8px;
+    border-radius:16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+.save-location-path{
+    background: rgba(124, 92, 255, 0.25);
+    padding: 2px 8px;
+    border-radius:8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+.launch-dialog spinner {
+    color: #1d99f3;
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(29, 153, 243, 0.55));
+    animation:
+        spin 1s linear infinite,
+        pa-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pa-pulse {
+    0%   { filter: drop-shadow(0 0 4px rgba(29, 153, 243, 0.35)); }
+    50%  { filter: drop-shadow(0 0 10px rgba(29, 153, 243, 0.75)); }
+    100% { filter: drop-shadow(0 0 4px rgba(29, 153, 243, 0.35)); }
 }

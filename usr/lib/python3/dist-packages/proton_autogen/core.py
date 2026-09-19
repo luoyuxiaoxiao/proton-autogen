@@ -6,12 +6,15 @@ import subprocess
 import hashlib
 import json
 import threading
+import time
 from collections import defaultdict
-
+from proton_autogen.i18n import tr
+from typing import Optional
 from pathlib import Path
 from proton_autogen import process_manager
 from proton_autogen.config import VERSION, CONFIG_FILE, CONFIG_DIR, PREFIX_DIR, PREFIX_DIR_PATH, load_proton_paths, load_prefix_dir
 from proton_autogen.utils.flatpak import wrap_host_command, prepare_host_env
+from proton_autogen.inhibit import wrap_command_with_inhibit
 from proton_autogen.utils.logger import StructuredLogger
 from proton_autogen.utils.steam_appid import detect_steam_appid
 from proton_autogen.utils.gamescope import build_gamescope_command, init_gamescope_env, clear_gamescope_env, apply_gamescope, LOG_FILTERS
@@ -52,29 +55,17 @@ USER_PROFILE_DATA = None
 logger = StructuredLogger("proton-autogen.core")
 
 #-----------------------------------------------------------------------------------------------
-def print_help_env(lang="fr"):
+def print_help_env(lang: Optional[str] = None):
     groups = defaultdict(list)
 
     for var in ENV_VARS:
         groups[var.get("type", "unknown")].append(var)
 
-    desc_key = {
-        "fr": "description_fr",
-        "en": "description_en",
-        "de": "description_de",
-        "uk": "description_uk",
-        "zh": "description_zh",
-        "hi": "description_hi",
-        "es": "description_es",
-        "pt": "description_pt",
-    }.get(lang, "description_en")  # anglais par défaut
-
     for group, vars_ in sorted(groups.items()):
         print(f"\n[{group.upper()}]\n")
 
         for var in vars_:
-            desc = var.get(desc_key, "")
-            print(f"- {var['name']}: {desc}")
+            print(f"- {var['name']}: {tr(var['i18n'])}")
 #-----------------------------------------------------------------------------------------------
 
 def apply_user_profile(env, profile):
@@ -339,6 +330,20 @@ def get_prefix_path(prefix_mode: str, exe_path: str) -> str:
 # -------------------------------------------------------------------------------------------------------------------------------------
 
 
+# Fréquence maximale à laquelle une ligne de sortie du process (stdout/
+# stderr) est remontée vers l'UI via progress.update(). Un jeu verbeux
+# (logs FPS, debug wine, télémétrie...) peut émettre des centaines de
+# lignes par seconde PENDANT TOUTE LA PARTIE, pas seulement au
+# lancement : sans ce plafond, chaque ligne déclenche un aller-retour
+# GTK complet (callback -> GLib.idle_add -> StatusLabel.set_text())
+# pour toute la durée de vie du process, ce qui suffit à expliquer une
+# consommation CPU continue en GUI, absente en CLI (où progress=None
+# par défaut, donc aucun callback à invoquer). Le logger, lui, reçoit
+# toujours CHAQUE ligne sans exception : seule la remontée UI est
+# limitée en fréquence, jamais le diagnostic/logging.
+MIN_PROGRESS_UPDATE_INTERVAL = 1.0  # secondes
+
+
 def run_process(
     cmd,
     env=None,
@@ -369,6 +374,24 @@ def run_process(
 
     stderr_pipe = subprocess.STDOUT if merge_stderr else subprocess.PIPE
 
+    if debug and logger:
+        logger.info("=== REAL POPEN ENV ===")
+        logger.info(f"HOME={env.get('HOME')}")
+        logger.info(f"WINEPREFIX={env.get('WINEPREFIX')}")
+        logger.info(f"STEAM_COMPAT_DATA_PATH={env.get('STEAM_COMPAT_DATA_PATH')}")
+        logger.info(f"STEAM_COMPAT_TOOL_PATHS={env.get('STEAM_COMPAT_TOOL_PATHS')}")
+        logger.info(f"STEAM_COMPAT_CLIENT_INSTALL_PATH={env.get('STEAM_COMPAT_CLIENT_INSTALL_PATH')}")
+        logger.info(f"STEAM_COMPAT_APP_ID={env.get('STEAM_COMPAT_APP_ID')}")
+        logger.info(f"SteamGameId={env.get('SteamGameId')}")
+        logger.info(f"DISPLAY={env.get('DISPLAY')}")
+        logger.info(f"XAUTHORITY={env.get('XAUTHORITY')}")
+        logger.info(f"DBUS_SESSION_BUS_ADDRESS={env.get('DBUS_SESSION_BUS_ADDRESS')}")
+        logger.info("=== END REAL POPEN ENV ===")
+
+    if debug and logger:
+        logger.info(f"FINAL HOST CMD: {' '.join(cmd)}")
+
+
     process = subprocess.Popen(
         cmd,
         cwd=cwd,
@@ -393,8 +416,13 @@ def run_process(
             progress.stop_spinner()
             progress.update(85, "Launching Proton")
 
+        # Initialisé à 0.0 pour que la toute première ligne passe
+        # immédiatement le throttle (pas d'attente artificielle avant le
+        # premier retour visible côté UI).
+        last_progress_update = 0.0
+
         def handle_line(line, stream="stdout"):
-            nonlocal percent
+            nonlocal percent, last_progress_update
 
             line = line.rstrip()
             # Ignore les lignes vides
@@ -406,18 +434,21 @@ def run_process(
                 if any(f in line for f in filters):
                     return
 
-            if progress is not None:
-                progress.update(
-                    percent,
-                    f"{stream}: {line}"
-                )
-                percent = min(percent + 1, 99)
-
+            # Le logger reçoit TOUJOURS la ligne, quelle que soit la
+            # fréquence — c'est le throttle ci-dessous (remontée UI
+            # uniquement) qui absorbe le volume, jamais le logging.
             if logger:
                 if debug:
                     logger.debug(f"{stream}: {line}")
                 else:
                     logger.info(line)
+
+            if progress is not None:
+                now = time.monotonic()
+                if now - last_progress_update >= MIN_PROGRESS_UPDATE_INTERVAL:
+                    progress.update(percent, f"{stream}: {line}")
+                    percent = min(percent + 1, 99)
+                    last_progress_update = now
 
         if merge_stderr:
 
@@ -577,10 +608,10 @@ def base_env(enable_mangohud=False, enable_gamemode=False, enable_gamescope=Fals
     # -----------------------------
     if enable_mangohud:
         env["MANGOHUD"] = "1"
-        env["MANGOHUD_DLSYM"] = "1"
+        #env["MANGOHUD_DLSYM"] = "1"
     else:
         env.pop("MANGOHUD", None)
-        env.pop("MANGOHUD_DLSYM", None)
+        #env.pop("MANGOHUD_DLSYM", None)
     # -----------------------------
     # GameScope
     # -----------------------------
@@ -721,9 +752,14 @@ def run_game_proton(exe_path, exe_type, proton,
             "run",
             exe_path
         ]
-        # Flatpak: execute Proton on the host
-        cmd = wrap_host_command(cmd, logger)
-        env = prepare_host_env(env)
+
+        # Verrou anti-veille (empêche l'écran de s'éteindre / la mise en
+        # veille pendant que le jeu tourne). Doit être enrobé AVANT
+        # wrap_host_command : sous Flatpak, systemd-inhibit doit parler
+        # au logind de l'hôte, pas tourner dans le sandbox.
+        cmd = wrap_command_with_inhibit(
+            cmd, features, game_name=os.path.basename(exe_path)
+        )
 
         # =========================
         # COMMON OPTIONS
@@ -742,7 +778,7 @@ def run_game_proton(exe_path, exe_type, proton,
 
         # Set Default env:
 
-        appid = detect_steam_appid(exe_path)
+        appid = detect_steam_appid(exe_path, fallback=True)
 
         env["STEAM_COMPAT_APP_ID"] = appid
         env["SteamAppId"] = appid
@@ -755,6 +791,50 @@ def run_game_proton(exe_path, exe_type, proton,
         else:
             # Affichage des log summary CLI
             log_profile_summary(logger, env, exe_type)
+
+        # --------------------------------------------------
+        # Flatpak / host execution
+        # --------------------------------------------------
+
+        if VERBOSE or DEBUG:
+            logger.info("=== BEFORE FLATPAK WRAP ===")
+            logger.info(f"CMD: {' '.join(cmd)}")
+            logger.info(
+                f"STEAM_COMPAT_DATA_PATH={env.get('STEAM_COMPAT_DATA_PATH')}"
+            )
+            logger.info(f"WINEPREFIX={env.get('WINEPREFIX')}")
+            logger.info(
+                f"STEAM_COMPAT_TOOL_PATHS={env.get('STEAM_COMPAT_TOOL_PATHS')}"
+            )
+            logger.info(
+                f"STEAM_COMPAT_CLIENT_INSTALL_PATH="
+                f"{env.get('STEAM_COMPAT_CLIENT_INSTALL_PATH')}"
+            )
+            logger.info(f"STEAM_COMPAT_APP_ID={env.get('STEAM_COMPAT_APP_ID')}")
+            logger.info("=== END BEFORE FLATPAK WRAP ===")
+
+        env = prepare_host_env(env)
+
+        if VERBOSE or DEBUG:
+            logger.info("=== AFTER PREPARE HOST ENV ===")
+            logger.info(
+                f"STEAM_COMPAT_DATA_PATH={env.get('STEAM_COMPAT_DATA_PATH')}"
+            )
+            logger.info(f"WINEPREFIX={env.get('WINEPREFIX')}")
+            logger.info(
+                f"STEAM_COMPAT_TOOL_PATHS={env.get('STEAM_COMPAT_TOOL_PATHS')}"
+            )
+            logger.info(f"STEAM_COMPAT_APP_ID={env.get('STEAM_COMPAT_APP_ID')}")
+            logger.info("=== END AFTER PREPARE HOST ENV ===")
+
+        cmd = wrap_host_command(cmd, env, logger)
+
+        if VERBOSE or DEBUG:
+            logger.info("=== AFTER WRAP HOST COMMAND ===")
+            logger.info(f"CMD: {' '.join(cmd)}")
+            logger.info("=== END AFTER WRAP HOST COMMAND ===")
+
+
         if progress is not None:
             progress.update( 83, f"Launch mode: Proton " )
         logger.info(f"Launch mode: Proton ")
@@ -784,6 +864,7 @@ def run_game_proton(exe_path, exe_type, proton,
                 progress=progress,
                 filters=filters,
                 merge_stderr=False,
+                debug=False,
                 game_id=game_id,      # <-- process_manager
                 prefix_path=prefix_path,
                 proton_dir=proton_dir,
@@ -826,6 +907,7 @@ def run_game_proton(exe_path, exe_type, proton,
                     progress=progress,
                     filters=filters,
                     merge_stderr=True,
+                    debug=False,
                     game_id=game_id,      # <-- process_manager
                     prefix_path=prefix_path,
                     proton_dir=proton_dir,

@@ -2,7 +2,7 @@
 # game_list.py
 import gi
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Pango, GObject, Gio
+from gi.repository import Gtk, Gdk, Pango, GObject, Gio
 from proton_autogen.stats import get_game_badges
 from proton_autogen.i18n import tr, set_language
 from proton_autogen.ux.icon_manager import load_game_icon
@@ -21,13 +21,16 @@ class GameItem(GObject.GObject):
 class GameList(Gtk.Box):
 
     def __init__(self, on_launch=None, on_edit=None, on_delete=None,
-                 on_export_lutris=None, on_refresh=None, lang="en"):
+                 on_export_lutris=None, on_refresh=None, on_install=None,
+                 on_protondb=None, lang="en"):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
 
         self.on_launch = on_launch
         self.on_edit = on_edit
         self.on_delete = on_delete
         self.on_export_lutris = on_export_lutris
+        self.on_install = on_install   # <-- nouveau
+        self.on_protondb = on_protondb   # <-- nouveau
         self.refresh_games = on_refresh
         self.lang = lang
         set_language(self.lang)
@@ -101,7 +104,7 @@ class GameList(Gtk.Box):
         info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         info_box.set_hexpand(True)
         info_box.set_valign(Gtk.Align.CENTER)
-        info_box.set_size_request(300, -1)
+        # info_box.set_size_request(300, -1)
 
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         header_box.set_halign(Gtk.Align.START)
@@ -143,11 +146,21 @@ class GameList(Gtk.Box):
             btn_export.set_size_request(18, 18)
             btn_export.set_tooltip_text(tr("export_lutris"))
 
+        # bouton creation de raccourci bureau:
+        btn_install = Gtk.Button()
+        btn_install.set_icon_name("system-run-symbolic")
+        btn_install.add_css_class("btn-install")
+        btn_install.set_valign(Gtk.Align.CENTER)
+        btn_install.set_size_request(24, 18)
+        btn_install.set_tooltip_text(tr("install_shortcut"))
+
+        # bouton launch:
         btn_launch = Gtk.Button(label="▶")
         btn_launch.add_css_class("btn-launch")
         btn_launch.set_valign(Gtk.Align.CENTER)
         btn_launch.set_size_request(24, 18)
 
+        # bouton edit:
         btn_edit = Gtk.Button(label=tr("edit"))
         btn_edit.add_css_class("btn-edit")
         btn_edit.set_valign(Gtk.Align.CENTER)
@@ -159,6 +172,7 @@ class GameList(Gtk.Box):
             container.append(Gtk.Label(label=""))
             container.append(btn_export)
             container.append(Gtk.Label(label=""))
+        container.append(btn_install)      # <-- nouveau
         container.append(btn_edit)
         container.append(btn_launch)
 
@@ -173,6 +187,7 @@ class GameList(Gtk.Box):
         container.btn_delete = btn_delete
         container.btn_export = btn_export
         container.btn_launch = btn_launch
+        container.btn_install = btn_install     # <-- nouveau
         container.btn_edit = btn_edit
         container.handler_ids = {}  # signal handlers connectés au bind, à retirer à l'unbind
 
@@ -210,8 +225,8 @@ class GameList(Gtk.Box):
             container.badges_box.remove(child)
             child = next_child
 
-        for b in get_game_badges(game, self.lang):
-            container.badges_box.append(self._create_badge(b))
+        for b in self._format_badges(game):
+            container.badges_box.append(self._create_badge(b, game))
 
         # CALLBACKS (connectés au bind, retirés à l'unbind pour éviter les doublons)
         container.handler_ids["delete"] = container.btn_delete.connect(
@@ -227,6 +242,10 @@ class GameList(Gtk.Box):
         container.handler_ids["edit"] = container.btn_edit.connect(
             "clicked", lambda _b: self._edit(item.data)
         )
+        #nouveau bouton create shortcut install
+        container.handler_ids["install"] = container.btn_install.connect(
+            "clicked", lambda _b: self._install(item.data)
+        )
 
     # -------------------------
     # FACTORY: UNBIND (nettoyage avant recyclage de la ligne)
@@ -239,6 +258,7 @@ class GameList(Gtk.Box):
         for name, btn in (
             ("delete", container.btn_delete),
             ("export", container.btn_export),
+            ("install", container.btn_install),   # <-- nouveau
             ("launch", container.btn_launch),
             ("edit", container.btn_edit),
         ):
@@ -247,9 +267,26 @@ class GameList(Gtk.Box):
                 btn.disconnect(handler_id)
 
     # -------------------------
+    # BADGES  protondb
+    # -------------------------
+    def _format_badges(self, game):
+        badges = list(get_game_badges(game, self.lang))
+        protondb_info = game.get("protondb")
+
+        if protondb_info:
+            badges.insert(0, {
+                "type": "protondb",
+                "label": f"{protondb_info.emoji}",
+                "text": f"ProtonDB — confiance : {protondb_info.tier.upper()} - {protondb_info.confidence} ({protondb_info.total_votes} rapports)",
+                "css": ["badge-protondb"],
+            })
+
+        return badges
+
+    # -------------------------
     # BADGES
     # -------------------------
-    def _create_badge(self, b):
+    def _create_badge(self, b, game=None):
         label_text = b.get("label", "")
         label = Gtk.Label(label=label_text)
         label.add_css_class("badge")
@@ -268,17 +305,57 @@ class GameList(Gtk.Box):
             label.set_tooltip_text(tooltip.strip())
 
         label.set_name(f"badge-{b.get('type', 'unknown')}")
+
+        # Badge ProtonDB : cliquable, ouvre le dialogue de détail
+        # (show_protondb_dialog côté Dashboard, via self.on_protondb).
+        #
+        # Gtk.Button plutôt que Gtk.Label + GestureClick : focusable au
+        # Tab, activable au clavier (Entrée/Espace), et annoncé comme
+        # "bouton" avec un nom accessible complet par les lecteurs
+        # d'écran (Orca) — un Label cliqué à la souris n'offre aucun de
+        # ces trois points.
+        if b.get("type") == "protondb" and game is not None:
+            button = Gtk.Button()
+            button.set_has_frame(False)
+            button.add_css_class("flat")
+            button.add_css_class("badge-clickable")
+            button.set_cursor(Gdk.Cursor.new_from_name("pointer"))
+            button.set_child(label)
+
+            accessible_name = tooltip.strip() if isinstance(tooltip, str) and tooltip.strip() else "ProtonDB"
+            button.set_tooltip_text(accessible_name)
+            button.update_property(
+                [Gtk.AccessibleProperty.LABEL],
+                [accessible_name],
+            )
+
+            button.connect("clicked", lambda *_: self._on_protondb_clicked(game))
+
+            return button
+
         return label
 
     def _make_label(self, text, css_class, wrap=False):
         label = Gtk.Label(label=text, xalign=0)
-        label.set_halign(Gtk.Align.START)
+        label.set_halign(Gtk.Align.FILL)
+        label.set_valign(Gtk.Align.CENTER)
+        label.set_hexpand(True)
+
         label.add_css_class(css_class)
+
         if wrap:
-            label.set_wrap(True)
-            label.set_wrap_mode(Pango.EllipsizeMode.MIDDLE)
+            # Les informations secondaires restent sur une ligne
+            # et sont tronquées proprement si nécessaire.
+            label.set_wrap(False)
+            label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            label.set_single_line_mode(True)
             label.set_selectable(True)
+        else:
+            label.set_ellipsize(Pango.EllipsizeMode.END)
+            label.set_single_line_mode(True)
+
         return label
+
 
     # -------------------------
     # FORMAT
@@ -338,3 +415,11 @@ class GameList(Gtk.Box):
     def _edit(self, game):
         if self.on_edit:
             self.on_edit(game)
+
+    def _install(self, game):
+        if self.on_install:
+            self.on_install(game)
+
+    def _on_protondb_clicked(self, game):
+        if self.on_protondb:
+            self.on_protondb(game)

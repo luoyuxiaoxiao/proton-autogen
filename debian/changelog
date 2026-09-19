@@ -1,13 +1,28 @@
-proton-autogen (3.2.7) noble; urgency=medium
+proton-autogen (3.3.8+ppa1) noble; urgency=medium
 
   * Thanks to all users and contributors for their continued support, feedback and bug reports.
-  * Thanks to all users and contributors for their continued support, feedback and bug reports.
-  * Add support for custom environment variables on a per-application basis, allowing users to define and manage application-specific runtime environment settings directly from the graphical editor.
-  * Add configurable FPS limits for MangoHud on a per-application basis.
-  * Improve application configuration management by correctly persisting, updating and removing custom environment variables.
-  * Improve the graphical application editor with dedicated controls for custom environment variables and MangoHud FPS limits.
-  * Improve environment configuration handling to ensure removed custom variables are properly deleted from application profiles.
-  * Improve MangoHud configuration flexibility with customizable FPS limits instead of relying solely on the default limit.
+  * New status Loader UX
+  * Add game import functionality to recover applications from Lutris and other supported sources.
+  * Add system monitoring with CPU and memory usage information.
+  * Improve application status reporting and runtime monitoring.
+  * Improve dashboard responsiveness and overall user experience.
+  * Improve application import workflow and user interface.
+  * Improve Flatpak support, packaging and installation documentation.
+  * Add Flatpak build and validation workflow.
+  * Add AUR package validation and build checks.
+  * Improve Debian package metadata and build configuration.
+  * Add automated package and integration validation workflows.
+  * Add comprehensive automated tests for core functionality, profiles, CLI, Gamescope and integrity checks.
+  * Add CSS integrity tests to help prevent UI regressions.
+  * Improve localization support across all supported languages.
+  * Improve application data and path handling.
+  * Improve Proton and Flatpak integration.
+  * Improve documentation with dedicated guides for Proton prefixes, Windows applications and game execution.
+  * Improve application profile management and stability.
+  * Improve graphical styles and responsive UI behavior.
+  * Remove obsolete system tray implementation.
+  * Improve code organization, cleanup and maintainability.
+  * Fix various UI, packaging and integration issues.
   * General UX improvements, configuration handling improvements and code cleanup.
 
- -- N3oray <n3oray77@gmail.com>  Tue, 18 Aug 2026 03:00:00 +0200
+ -- N3oray <n3oray77@gmail.com>  Tue, 15 Sep 2026 14:34:00 +0200

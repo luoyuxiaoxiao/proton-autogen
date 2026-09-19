@@ -38,11 +38,18 @@
 @define-color hk_accent #ff8fc4;
 @define-color hk_dark_pink #d26ca2;
 
+/* Alias requis par les règles de focus clavier (:focus/:focus-visible)
+   plus bas dans ce fichier, qui référencent @accent. */
+@define-color accent @kawaii-pink-dark;
+
 /* =========================================================
    Text
    ========================================================= */
 label{
-    color: white;
+    color: @kawaii-green;
+    font-size: 12px;
+    font-weight: bold;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
 }
 
 
@@ -54,6 +61,7 @@ entry {
 text,
 textview {
     color: @kawaii-pink-dark;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 
 /* =========================================================
@@ -196,6 +204,28 @@ button.suggested-action:hover {
     background: #43a047;
 }
 
+button.alternative-action {
+    background: #7e57c2;
+    color: white;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+button.alternative-action:hover {
+    background: #6a46b1;
+}
+
+button.destructive-action {
+    background: #f44336;
+    color: white;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+button.destructive-action:hover {
+    background: #e53935;
+}
+
 .app-button {
 
     background:
@@ -227,16 +257,20 @@ button.suggested-action:hover {
         0 0 10px rgba(255,170,220,0.45);
 }
 
+.status-box {
+    background: alpha(@theme_fg_color,0.12);
+}
+
 .section-toggle {
-    background: transparent;
+    background: alpha(@theme_fg_color,0.12);
     color: white;
-    border-radius: 8px;
-    padding: 6px 12px;
+    border-radius: 6px;
+    padding: 3px 6px;
     font-size: 11px;
 }
 
 .section-toggle:hover {
-    background: alpha(@theme_fg_color,0.12);
+    background: alpha(@theme_fg_color,0.24);
 }
 
 .btn-launch {
@@ -328,7 +362,7 @@ button.suggested-action:hover {
 
     border-radius:22px;
     border:2px solid #f6dced;
-    padding:14px;
+    padding:8px;
     box-shadow:
         0 8px 24px rgba(255,170,210,0.18);
 }
@@ -388,6 +422,7 @@ button.suggested-action:hover {
 .label-bottom label {
     color: @kawaii-pink-dark;
     font-size:16px;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 
 .game-container label {
@@ -438,6 +473,8 @@ label.home-label {
     font-size: 16px;
     margin-left: 6px;
     padding: 4px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.04);
 }
 
 
@@ -480,13 +517,14 @@ label.home-label {
     background:transparent;
     color: @kawaii-pink-dark;
     font-family:monospace;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 
 
 
 .badge {
     border-radius:999px;
-    padding:4px 10px;
+    padding:4px 6px;
     background:#ffe1f2;
     color:#9b5d81;
     border:2px solid #ffc4df;
@@ -519,7 +557,7 @@ label.home-label {
     border-color:#ffe27f;
 }
 
-.badge.profile {
+.badge-protondb, .badge.profile {
 
     background:#dff2ff;
     color:#5f82b0;
@@ -645,15 +683,13 @@ scrollbar.vertical slider {
 .carousel-button {
     min-width: 36px;
     min-height: 36px;
-    color:white;
     padding: 0;
-
     border-radius: 18px;
-    background-color: alpha(@theme_fg_color, 0.05);
+    background-color: alpha(currentColor, 0.05);
 }
 
 .carousel-button:hover {
-    background-color: alpha(@theme_fg_color, 0.07);
+    background-color: alpha(currentColor, 0.20);
 }
 
 .carousel-button:disabled {
@@ -687,6 +723,7 @@ scrollbar.vertical slider {
 
 checkbutton {
     color: @kawaii-pink-dark;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 
 checkbutton check {
@@ -698,6 +735,7 @@ checkbutton check {
 checkbutton check:checked {
     background: @kde-blue;
     border-color: @kawaii-pink-dark;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 
 checkbutton check:checked image {
@@ -706,6 +744,7 @@ checkbutton check:checked image {
 
 checkbutton label {
     color: @kawaii-pink-dark;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.6);
 }
 
 
@@ -830,4 +869,367 @@ scrollbar slider:hover {
 
     box-shadow:
         0 0 10px rgba(61,255,138,0.45);
+}
+
+.status-history-panel {
+    padding: 6px;
+    border: 1px solid rgba(255,255,255,0.04);
+    background:
+        linear-gradient(
+            180deg,
+            #fffefd,
+            #fff0fa
+        );
+    border-radius: 6px;
+}
+
+.status-history-entry {
+    color: @kawaii-text;
+    font-size: 0.9em;
+}
+
+.status-history-error {
+    color: #e05252;
+}
+
+.status-history-success {
+    color: #4caf78;
+}
+
+/* -------------------------------------------------
+   GAME GRID
+   ------------------------------------------------- */
+
+.game-grid {
+    padding: 4px;
+    background-color: transparent;
+}
+
+.game-grid scrolledwindow {
+    background-color: transparent;
+}
+
+.game-grid-card {
+    min-width: 0;
+    min-height: 0;
+
+    margin: 2px;
+    padding: 4px;
+
+    border-radius: 10px;
+}
+
+.game-grid-card:hover {
+    background-color: alpha(@kawaii-pink, 0.25);
+}
+
+.game-grid-icon-holder {
+    min-width: 0;
+    min-height: 0;
+}
+
+.game-grid-icon {
+    border-radius: 6px;
+}
+
+.game-grid-title {
+    font-weight: 600;
+    font-size: 1em;
+    margin-left: 1px;
+    margin-right: 1px;
+    color: @kawaii-text;
+}
+
+.game-grid-badges {
+    min-height: 8px;
+}
+
+
+/* =========================================================
+ * GAME GRID — CONTEXT MENU — Theme cute
+ * ========================================================= */
+
+.game-grid-context-menu {
+    padding: 3px;
+    border-radius: 8px;
+
+    background-color: @kawaii-surface;
+    color: @kawaii-text;
+}
+
+
+/* =========================================================
+ * POPover
+ * ========================================================= */
+
+popover.game-grid-context-menu {
+    background-color: @kawaii-surface;
+    color: @kawaii-text;
+}
+
+popover.game-grid-context-menu contents {
+    background-color: @kawaii-surface;
+    color: @kawaii-text;
+}
+
+
+/* =========================================================
+ * Boutons
+ * ========================================================= */
+
+.game-grid-context-menu button {
+    min-height: 24px;
+    padding: 4px 9px;
+
+    border: none;
+    border-radius: 5px;
+    box-shadow: none;
+
+    color: @kawaii-text;
+    background-color: transparent;
+}
+
+.game-grid-context-menu button:hover {
+    color: @kawaii-text;
+    background-color: @hk_hover;
+}
+
+.game-grid-context-menu button:active {
+    color: @kawaii-text;
+    background-color: @kawaii-pink;
+}
+
+.game-grid-context-menu button:focus-visible {
+    color: @kawaii-text;
+    outline: 2px solid @kawaii-pink-dark;
+    outline-offset: -2px;
+}
+
+
+/* =========================================================
+ * Suppression
+ * ========================================================= */
+
+.game-grid-context-menu .game-grid-menu-delete {
+    color: @hk_dark_pink;
+}
+
+.game-grid-context-menu .game-grid-menu-delete:hover {
+    color: @hk_dark_pink;
+    background-color: alpha(@hk_dark_pink, 0.15);
+}
+
+.game-grid-context-menu .game-grid-menu-delete:active {
+    color: @hk_dark_pink;
+    background-color: alpha(@hk_dark_pink, 0.25);
+}
+
+
+/* =========================================================
+ * Séparateur
+ * ========================================================= */
+
+
+.game-grid-context-menu separator {
+    margin: 3px 2px;
+    min-height: 1px;
+    background-color: @kawaii-border;
+}
+
+.game-grid-context-menu button,
+.game-grid-context-menu button label {
+    color: @kawaii-text;
+}
+
+.game-grid-context-menu button:hover,
+.game-grid-context-menu button:hover label {
+    color: @kawaii-text;
+}
+
+.game-grid-context-menu button:active,
+.game-grid-context-menu button:active label {
+    color: @kawaii-text;
+}
+
+.game-grid-context-menu .game-grid-menu-delete,
+.game-grid-context-menu .game-grid-menu-delete label {
+    color: @hk_dark_pink;
+}
+
+/* =========================================================
+ * NAVIGATION CLAVIER / FOCUS
+ * ========================================================= */
+.btn-delete:focus-visible,
+.btn-export:focus-visible,
+.btn-install:focus-visible,
+.btn-edit:focus-visible,
+.btn-launch:focus-visible,
+.badge-clickable:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+popover modelbutton:focus-visible,
+popover menuitem:focus-visible {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+/* Boutons */
+button:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Focus clavier plus discret pour les boutons d'action */
+.btn-delete:focus,
+.btn-export:focus,
+.btn-install:focus,
+.btn-edit:focus,
+.btn-launch:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Badge ProtonDB cliquable */
+.badge-clickable:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Entrées texte */
+entry:focus,
+searchentry:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* ListView */
+.game-list:focus {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+/* Éléments de menu / popover */
+popover modelbutton:focus,
+popover menuitem:focus {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+/* Boutons de popover */
+popover button:focus {
+    background: rgba(124, 92, 255, 0.25);
+    color: #ffffff;
+
+    outline: 2px solid @accent;
+    outline-offset: 1px;
+}
+
+
+/* =========================================================
+ * ACCESSIBILITÉ CLAVIER (complément)
+ * - Icône de jeu (grille) : Gtk.Button focusable au Tab, activable
+ *   à Entrée/Espace -> anneau de focus manquant du bloc précédent.
+ * - Fenêtre "Raccourcis clavier" (menu, ou Ctrl+? / Ctrl+/).
+ * ========================================================= */
+
+.game-grid-icon-holder:focus,
+.game-grid-icon-holder:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: 2px;
+}
+
+.shortcuts-window {
+    background: @kawaii-surface;
+    border-radius: 16px;
+}
+
+.shortcuts-list {
+    background: transparent;
+}
+
+.shortcuts-list row {
+    background: transparent;
+    border-radius: 8px;
+}
+
+.shortcuts-list row:hover {
+    background: @hk_hover;
+}
+
+.shortcuts-list row:focus,
+.shortcuts-list row:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+    border-radius: 8px;
+}
+
+.shortcut-key {
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: @kawaii-pink;
+    border: 1px solid @kawaii-border;
+    color: @kawaii-text;
+}
+
+.save-backup-path {
+    font-size: 0.75em;
+    color: alpha(@theme_fg_color, 0.55);
+}
+
+.save-backup-dialog, .save-manager-dialog{
+    background:#fffdfd;
+    padding: 2px 8px;
+    border-radius:16px;
+    color:white;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+.save-history-list{
+    /*background-color: alpha(@kawaii-pink, 0.25);*/
+    background:
+        linear-gradient(
+            180deg,
+            #fffefd,
+            #fff0fa
+        );
+    padding: 2px 8px;
+    border-radius:16px;
+    color:white;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255, 143, 196, 0.35);
+    border-color:#ffb4d8;
+}
+
+.save-location-path{
+    background:#fffdfd;
+    padding: 2px 8px;
+    border-radius:8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+}
+
+.launch-dialog spinner {
+    color: #ff8fc4;
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(255, 143, 196, 0.55));
+    animation:
+        spin 1s linear infinite,
+        pa-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pa-pulse {
+    0%   { filter: drop-shadow(0 0 4px rgba(255, 143, 196, 0.35)); }
+    50%  { filter: drop-shadow(0 0 10px rgba(255, 143, 196, 0.75)); }
+    100% { filter: drop-shadow(0 0 4px rgba(255, 143, 196, 0.35)); }
 }

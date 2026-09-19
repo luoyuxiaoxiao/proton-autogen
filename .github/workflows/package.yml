@@ -1,4 +1,4 @@
-name: Debian Package
+name: Build and Release Packages
 
 on:
   push:
@@ -15,9 +15,14 @@ permissions:
   contents: write
 
 jobs:
-  build-deb:
 
-    name: Build Debian package
+  # ============================================================
+  # Debian packages
+  # ============================================================
+
+  build-deb:
+    name: Build Debian package (${{ matrix.ubuntu }})
+
     strategy:
       matrix:
         ubuntu:
@@ -40,7 +45,7 @@ jobs:
             fakeroot \
             lintian
 
-      - name: Build package from debian/
+      - name: Build package
         run: |
           dpkg-buildpackage \
             -us \
@@ -56,19 +61,16 @@ jobs:
         run: |
           lintian ../*.deb
 
-
       - name: Install generated package
         run: |
           sudo apt-get install -y ../*.deb
-
 
       - name: Verify installation
         run: |
           proton-autogen --help
           proton-autogen --version
 
-
-      - name: Prepare Debian artifact
+      - name: Prepare artifact
         run: |
           mkdir -p artifacts
           cp ../*.deb artifacts/
@@ -80,41 +82,381 @@ jobs:
           path: artifacts/*.deb
 
 
-  release:
+  # ============================================================
+  # Arch Linux package
+  # ============================================================
 
+  build-arch:
+    name: Build (Arch / pacman)
+
+    runs-on: ubuntu-latest
+
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    container:
+      image: archlinux:latest
+
+    steps:
+
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+
+          pacman -S --noconfirm \
+            base-devel \
+            git \
+            python \
+            python-build \
+            python-installer \
+            python-wheel \
+            python-setuptools \
+            python-gobject \
+            python-pyyaml \
+            python-rich \
+            python-requests \
+            python-psutil \
+            python-xlib \
+            gtk4 \
+            gdk-pixbuf2 \
+            graphene
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mark workspace safe for git
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Resolve version
+        id: ver
+        run: |
+          V="${GITHUB_REF#refs/tags/v}"
+
+          echo "VERSION=$V" >> "$GITHUB_OUTPUT"
+
+          echo "Building Proton-Autogen version: $V"
+
+      - name: Create CI PKGBUILD
+        run: |
+          V="${{ steps.ver.outputs.VERSION }}"
+
+          cat > PKGBUILD.ci <<EOF
+          pkgname=proton-autogen
+          pkgver=$V
+          pkgrel=1
+          pkgdesc="Automatic Proton/Wine launcher for Windows executables"
+          arch=('any')
+          url="https://github.com/N3oRay/proton-autogen"
+          license=('MIT')
+
+          depends=(
+              'python'
+              'python-gobject'
+              'python-pyyaml'
+              'python-rich'
+              'python-requests'
+              'python-psutil'
+              'python-xlib'
+              'gtk4'
+              'gdk-pixbuf2'
+              'graphene'
+          )
+
+          makedepends=(
+              'python-build'
+              'python-installer'
+              'python-wheel'
+              'python-setuptools'
+          )
+
+          build() {
+              cd "\$startdir"
+
+              python -m build --wheel --no-isolation
+
+              echo "Checking wheel for UX assets..."
+
+              python - <<'PY'
+          import glob
+          import zipfile
+          import sys
+
+          wheels = glob.glob("dist/*.whl")
+
+          if not wheels:
+              print("ERROR: no wheel found")
+              sys.exit(1)
+
+          wheel = wheels[0]
+
+          with zipfile.ZipFile(wheel) as z:
+              assets = [
+                  name
+                  for name in z.namelist()
+                  if "/ux/assets/" in name
+              ]
+
+          if not assets:
+              print("ERROR: wheel contains no UX assets")
+              sys.exit(1)
+
+          print(f"Found {len(assets)} UX asset files in {wheel}")
+
+          for asset in assets[:20]:
+              print(f"  {asset}")
+          PY
+          }
+
+          package() {
+              cd "\$startdir"
+
+              python -m installer \
+                  --destdir="\$pkgdir" \
+                  dist/*.whl
+
+              echo "Checking installed UX assets..."
+
+              find \
+                  "\$pkgdir/usr/lib/python"*"/site-packages/proton_autogen/ux/assets" \
+                  -type f \
+                  | sort
+
+              install -Dm755 \
+                  usr/bin/proton-autogen \
+                  "\$pkgdir/usr/bin/proton-autogen"
+
+              install -dm755 \
+                  "\$pkgdir/usr/share/proton-autogen"
+
+              cp -a \
+                  usr/share/proton-autogen/. \
+                  "\$pkgdir/usr/share/proton-autogen/"
+
+              install -Dm644 \
+                  usr/share/applications/proton-autogen.desktop \
+                  "\$pkgdir/usr/share/applications/proton-autogen.desktop"
+
+              install -Dm644 \
+                  usr/share/icons/hicolor/256x256/apps/proton-autogen.png \
+                  "\$pkgdir/usr/share/icons/hicolor/256x256/apps/proton-autogen.png"
+
+              install -Dm644 \
+                  usr/share/icons/hicolor/256x256/apps/proton-autogen.png \
+                  "\$pkgdir/usr/share/icons/hicolor/256x256/apps/io.github.N3oRay.ProtonAutogen.png"
+
+              install -Dm644 \
+                  debian/proton-autogen.1.gz \
+                  "\$pkgdir/usr/share/man/man1/proton-autogen.1.gz"
+
+              install -Dm644 \
+                  LICENSE \
+                  "\$pkgdir/usr/share/licenses/proton-autogen/LICENSE"
+          }
+          EOF
+
+          cp PKGBUILD.ci PKGBUILD
+
+          echo "Generated PKGBUILD:"
+          cat PKGBUILD
+
+      - name: Build pacman package
+        run: |
+          useradd -m builder
+
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+          su builder -c \
+            "cd '$GITHUB_WORKSPACE' && makepkg -f --nodeps --noconfirm"
+
+      - name: Inspect package
+        run: |
+          ls -lh ./*.pkg.tar.zst
+
+          pacman -Qip ./*.pkg.tar.zst
+
+      - name: Verify package content
+        run: |
+          echo "Checking package content..."
+
+          tar -tf ./*.pkg.tar.zst \
+            | grep 'proton_autogen'
+
+      - name: Check package contents
+        run: |
+          pacman -Qlp ./*.pkg.tar.zst
+
+      - name: Verify UX assets in package
+        run: |
+          echo "Checking packaged UX assets..."
+
+          pacman -Qlp ./*.pkg.tar.zst \
+            | grep 'proton_autogen/ux/assets/'
+
+      - name: Install package
+        run: |
+          pacman -U --noconfirm ./*.pkg.tar.zst
+
+      - name: Test binary version
+        run: |
+          proton-autogen --version
+
+      - name: Test binary help
+        run: |
+          proton-autogen --help
+
+      - name: List package files
+        run: |
+          pacman -Ql proton-autogen
+
+      - name: Verify installed files
+        run: |
+          test -x /usr/bin/proton-autogen
+
+          ASSET_DIR=$(find /usr/lib -type d \
+            -path '*/site-packages/proton_autogen/ux/assets' \
+            -print -quit)
+
+          WIDGET_DIR=$(find /usr/lib -type d \
+            -path '*/site-packages/proton_autogen/ux/widgets' \
+            -print -quit)
+
+          test -n "$ASSET_DIR"
+          test -d "$ASSET_DIR"
+
+          test -n "$WIDGET_DIR"
+          test -d "$WIDGET_DIR"
+
+          echo "UX assets directory: $ASSET_DIR"
+          echo "UX widgets directory: $WIDGET_DIR"
+
+      - name: Uninstall package
+        run: |
+          pacman -Rns --noconfirm proton-autogen
+
+      - name: Verify uninstall
+        run: |
+          test ! -e /usr/bin/proton-autogen
+
+          if pacman -Q proton-autogen >/dev/null 2>&1; then
+            echo "ERROR: proton-autogen is still installed"
+            exit 1
+          fi
+
+          echo "Proton-Autogen successfully uninstalled"
+
+      - name: Prepare Arch artifact
+        run: |
+          mkdir -p dist
+
+          cp ./*.pkg.tar.zst dist/
+
+      - name: Upload Arch artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: proton-autogen-arch
+          path: dist/*.pkg.tar.zst
+
+
+# ============================================================
+  # Flatpak
+  # ============================================================
+
+  build-flatpak:
+    name: Build Flatpak
+
+    runs-on: ubuntu-latest
+
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      options: --privileged
+
+    steps:
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+          echo "Building Proton-Autogen ${VERSION}"
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: io.github.N3oRay.ProtonAutogen.yml
+          bundle: io.github.N3oRay.ProtonAutogen.flatpak
+          repository-name: flathub
+          repository-url: https://flathub.org/repo/flathub.flatpakrepo
+          cache: true
+          cache-key: flatpak-builder-${{ github.sha }}
+
+      - name: Verify Flatpak bundle
+        run: |
+          ls -lh io.github.N3oRay.ProtonAutogen.flatpak
+
+          test -f io.github.N3oRay.ProtonAutogen.flatpak
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: proton-autogen-flatpak
+          path: io.github.N3oRay.ProtonAutogen.flatpak
+
+
+  # ============================================================
+  # GitHub Release
+  # ============================================================
+
+  release:
     name: Publish GitHub Release
 
-    needs: build-deb
+    needs:
+      - build-deb
+      - build-arch
+      - build-flatpak
 
     if: startsWith(github.ref, 'refs/tags/v')
 
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
 
+      - name: Download Ubuntu 24.04 Debian package
+        uses: actions/download-artifact@v4
+        with:
+          name: proton-autogen-ubuntu-24.04-deb
+          path: release/deb
 
-      - name: Install packaging tools
+      - name: Download Arch package
+        uses: actions/download-artifact@v4
+        with:
+          name: proton-autogen-arch
+          path: release/arch
+
+      - name: Download Flatpak
+        uses: actions/download-artifact@v4
+        with:
+          name: proton-autogen-flatpak
+          path: release/flatpak
+
+      - name: List release files
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            devscripts \
-            debhelper \
-            fakeroot
-
-
-      - name: Build Debian package
-        run: |
-          dpkg-buildpackage \
-            -us \
-            -uc \
-            -b
-
+          echo "Release files:"
+          find release -type f -maxdepth 3 -print
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ../*.deb
+            release/deb/*.deb
+            release/arch/*.pkg.tar.zst
+            release/flatpak/*.flatpak

@@ -8,7 +8,7 @@ from pathlib import Path
 from proton_autogen.detection.proton import DEFAULT_PROTON_PATHS
 
 
-VERSION = "3.2.7"
+VERSION = "3.3.8"
 
 CONFIG_FILE = os.path.expanduser("~/.config/proton-autogen/proton-autogen.conf")
 CONFIG_DIR = os.path.expanduser("~/.config/proton-autogen/games")
@@ -16,11 +16,18 @@ CONFIG_DIR = os.path.expanduser("~/.config/proton-autogen/games")
 PREFIX_DIR = "~/Documents/Proton/env"
 PREFIX_DIR_PATH = os.path.expanduser(PREFIX_DIR)
 
+# Old location (before consolidation under ~/.config/proton-autogen/).
+# Retained solely for the automatic migration below.
+
 # Ancien emplacement (avant regroupement sous ~/.config/proton-autogen/).
 # Conservé uniquement pour la migration automatique ci-dessous.
 _LEGACY_CONFIG_FILE = os.path.expanduser("~/.config/proton-autogen.conf")
 
 
+# Moves the old ~/.config/proton-autogen.conf to the new
+# location ~/.config/proton-autogen/proton-autogen.conf—once only—
+# without ever overwriting a file already present at the new location.
+# Silent failure: must never prevent the app from starting.
 def _migrate_legacy_config():
     """Déplace l'ancien ~/.config/proton-autogen.conf vers le nouvel
     emplacement ~/.config/proton-autogen/proton-autogen.conf, une seule
@@ -116,6 +123,80 @@ prefix_dir = ~/Documents/Proton/env
         cleaned.append(p)
 
     return cleaned
+
+
+def load_proton_paths_raw() -> list:
+    """Retourne uniquement les chemins Proton personnalisés déclarés par
+    l'utilisateur (clé `paths` de la section [proton]), SANS les chemins
+    par défaut (DEFAULT_PROTON_PATHS). Destiné à l'édition dans l'UI de
+    réglages : load_proton_paths() mélange défauts + config pour la
+    détection, ce qui n'est pas ce qu'on veut réafficher/résauvegarder
+    dans un champ éditable (on dupliquerait les défauts à chaque save)."""
+    if not os.path.isfile(CONFIG_FILE):
+        return []
+
+    config = configparser.ConfigParser()
+
+    try:
+        config.read(CONFIG_FILE)
+
+        if config.has_section("proton") and config.has_option("proton", "paths"):
+            raw = config["proton"]["paths"]
+            return [p.strip() for p in re.split(r"[;:\n]", raw) if p.strip()]
+
+    except Exception:
+        pass
+
+    return []
+
+
+def save_proton_paths(paths: list):
+    """Sauvegarde la liste de chemins Proton personnalisés (une entrée
+    par ligne côté UI), sans toucher aux autres clés existantes du
+    fichier de config (ex. prefix_dir)."""
+    config = configparser.ConfigParser()
+
+    if os.path.isfile(CONFIG_FILE):
+        try:
+            config.read(CONFIG_FILE)
+        except Exception:
+            pass
+
+    if "proton" not in config:
+        config["proton"] = {}
+
+    cleaned = [p.strip() for p in paths if p and p.strip()]
+    config["proton"]["paths"] = ";".join(cleaned)
+
+    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+
+    with open(CONFIG_FILE, "w") as f:
+        config.write(f)
+
+
+def save_prefix_dir(path: str):
+    """Sauvegarde le dossier racine des préfixes Proton/Wine. Une valeur
+    vide retombe sur PREFIX_DIR (~/Documents/Proton/env) plutôt que
+    d'écrire une clé vide, pour rester cohérent avec le repli de
+    load_prefix_dir()."""
+    config = configparser.ConfigParser()
+
+    if os.path.isfile(CONFIG_FILE):
+        try:
+            config.read(CONFIG_FILE)
+        except Exception:
+            pass
+
+    if "proton" not in config:
+        config["proton"] = {}
+
+    path = (path or "").strip()
+    config["proton"]["prefix_dir"] = path or PREFIX_DIR
+
+    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+
+    with open(CONFIG_FILE, "w") as f:
+        config.write(f)
 
 
 def load_prefix_dir() -> str:

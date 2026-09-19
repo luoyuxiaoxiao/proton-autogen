@@ -7,37 +7,107 @@ import threading
 from datetime import datetime
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gio, Gdk, GLib
+from proton_autogen.system_monitor import SystemMonitor
+
+from proton_autogen.ux.dashboard_mini import DashboardMiniMixin
 from proton_autogen.ux.dashboard_ui import DashboardUIMixin
 from proton_autogen.ux.dashboard_dialogs import DashboardDialogsMixin
 from proton_autogen.ux.dashboard_actions import DashboardActionsMixin
 from proton_autogen.ux.dashboard_mangohud import DashboardMangoHudMixin
-from proton_autogen.ux.themes import load_saved_theme, save_theme, AVAILABLE_THEMES, DEFAULT_THEME, BACKGROUND_THEMES, STYLE_CSS
+from proton_autogen.ux.dashboard_creatshortcut import DashboardCreateShortcutMixin
+from proton_autogen.ux.dashboard_settings import DashboardSettingsMixin
+from proton_autogen.ux.dashboard_shortcuts import DashboardShortcutsMixin
+from proton_autogen.ux.dashboard_saves import DashboardSavesMixin
+from proton_autogen.ux.dashboard_import import DashboardImportMixin
+
+from proton_autogen.ux.themes import (
+    load_saved_theme, save_theme, AVAILABLE_THEMES, DEFAULT_THEME,
+    BACKGROUND_THEMES, STYLE_CSS,
+    load_remember_window_size, save_remember_window_size,
+    load_window_size, save_window_size,
+    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
+    MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
+    load_saved_language,
+)
+from proton_autogen.i18n import tr, detect_help_env_lang
 from proton_autogen.ux.search import filter_games
 from proton_autogen.notify import notifications
 from proton_autogen.backend import list_programs_ux
-from proton_autogen.i18n import detect_help_env_lang
 
 
 # -----------------------------
 # MAIN WINDOW
 # -----------------------------
-class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, DashboardMangoHudMixin, Gtk.ApplicationWindow):
+class Dashboard(DashboardMiniMixin, DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, DashboardMangoHudMixin, DashboardCreateShortcutMixin, DashboardSettingsMixin, DashboardShortcutsMixin, DashboardSavesMixin, DashboardImportMixin, Gtk.ApplicationWindow):
     SHOW_ADD_BUTTON = True
+    SHOW_IMPORT_BUTTON = True
     SHOW_REFRESH_BUTTON = True
 
     def __init__(self, app):
         super().__init__(application=app)
         self.set_title("Proton-Autogen")
         self.set_icon_name("proton-autogen")
-        self.set_default_size(1120, 800)
-        self.set_size_request(1120, 800)
+
+
+        # Taille de fenêtre : reprend la dernière taille sauvegardée si
+        # remember_window_size est activé (par défaut), sinon retombe
+        # sur DEFAULT_WINDOW_WIDTH/HEIGHT. set_size_request() reste fixé
+        # à un minimum absolu indépendant (MIN_WINDOW_*), pour ne jamais
+        # empêcher l'utilisateur de redimensionner en dessous de la
+        # taille mémorisée si besoin.
+        if load_remember_window_size():
+            width, height = load_window_size()
+        else:
+            width, height = DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
+
+        self.set_default_size(width, height)
+        self.set_size_request(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
+
+        # Sauvegarde la taille courante juste avant la fermeture
+        # (close-request est émis avant que la fenêtre ne soit détruite,
+        # get_width()/get_height() reflètent donc encore la taille
+        # réelle affichée à l'écran). Retourne False pour ne jamais
+        # bloquer la fermeture, quel que soit le résultat de la sauvegarde.
+        self.connect("close-request", self._on_close_request)
+
         self.games = []
         self.current_carousel = None
-        self.lang = detect_help_env_lang()
+        self.system_status = "◌ CPU..."
+        # Priorité : préférence explicite sauvegardée via le panneau de
+        # réglages, sinon détection CLI/environnement habituelle.
+        self.lang = load_saved_language() or detect_help_env_lang()
         notifications.set_callback(self.notify_toast)
+        self._init_save_prompt_bridge()  # vient de DashboardSavesMixin
+
+        # Contrôle Status :
+        self.system_monitor = SystemMonitor()
 
         self.build_ui()   # vient du mixin
-        self.refresh_games()
+        self.refresh_games() # chargement de la liste des applications
+
+
+
+    def _on_close_request(self, *_):
+        if load_remember_window_size():
+            save_window_size(self.get_width(), self.get_height())
+        return False  # ne jamais empêcher la fermeture
+
+    # -------------------------
+    # Réglage utilisateur (extension point pour une future case à cocher
+    # dans les préférences ; fonctionne dès maintenant tel quel)
+    # -------------------------
+    def set_remember_window_size(self, enabled: bool):
+        save_remember_window_size(enabled)
+        if enabled:
+            # Mémorise immédiatement la taille actuelle plutôt que
+            # d'attendre la fermeture, pour un effet visible tout de suite.
+            save_window_size(self.get_width(), self.get_height())
+
+
+    def on_import_game(self, _btn=None):
+        """Lance le dialog d'import."""
+        self.show_import_dialog()
+
 
     # Notify Toast
     def notify_toast(self, status, timeout=3):
@@ -49,10 +119,11 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
         )
 
     # Progres Barre
-    def progress_callback(self, percent, message):
+    def progress_callback(self, percent, message, is_spinner_tick=False):
         def update():
             self.status.set_text(
-                f"{message} ({percent}%)"
+                f"{message} ({percent}%)",
+                record_history=not is_spinner_tick,
             )
             return False
 
@@ -70,15 +141,14 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
             # Changement du background
             self.update_background(app.current_style)
             # feedback rapide
-            self.status.set_text(f"Style: {app.current_style}")
+            self.status.set_text(tr("style_label").format(style=app.current_style))
         else:
             # fallback ancien comportement
             if app.current_style == "fluent":
                 app.apply_style("adwaita")
-                self.status.set_text("Style: Adwaita")
             else:
                 app.apply_style("fluent")
-                self.status.set_text("Style: Proton Autogen")
+            self.status.set_text(tr("style_label").format(style=app.current_style))
             self.update_background(app.current_style)
 
     # update css carousel
@@ -109,12 +179,49 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
 
         return { "total_games": total, "hours": hours, "minutes": minutes, "favorites": favorites, }
 
+    def _check_system_status(self):
+        system = self.system_monitor.get_status()
+
+        GLib.idle_add(self._apply_system_status, system)
+
+
+    def _apply_system_status(self, system):
+        level = system["level"]
+        cpu = system["cpu"]
+        memory = system["memory"]
+
+        if level == "critical":
+            self.system_status = (
+                f"🔴 CPU {cpu:.0f}% • RAM {memory:.0f}%"
+            )
+        elif level == "warning":
+            self.system_status = (
+                f"🟠 CPU {cpu:.0f}% • RAM {memory:.0f}%"
+            )
+        else:
+            self.system_status = (
+                f"🟢 CPU {cpu:.0f}% • RAM {memory:.0f}%"
+            )
+
+        if self.games:
+            self.update_stats(self.games)
+
+        return False
+
+
+
+
     def update_stats(self, games):
         stats = self.build_global_stats(games)
 
-        self.stats_label.set_text( f"🎮 {stats['total_games']} games  •  " f"⏱ {stats['hours']}h {stats['minutes']}m  •  " f"⭐ {stats['favorites']}" )
-        self.stats_label.add_css_class("home-label")
+        self.stats_label.set_text(
+            f"🎮 {stats['total_games']} games  •  "
+            f"⏱ {stats['hours']}h {stats['minutes']}m  •  "
+            f"⭐ {stats['favorites']}  •  "
+            f"{self.system_status}"
+        )
 
+        self.stats_label.add_css_class("home-label")
 
     def update_background(self, theme):
         base = os.path.dirname(__file__)
@@ -155,6 +262,14 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
             if g.get("favorite", False)
         ][:limit]
 
+    def _set_game_views(self, games):
+        """Met à jour simultanément les vues liste et grille."""
+        if hasattr(self, "game_list"):
+            self.game_list.set_games(games)
+
+        if hasattr(self, "game_grid"):
+            self.game_grid.set_games(games)
+
     # -------------------------
     # SEARCH
     # -------------------------
@@ -162,7 +277,9 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
 
         text = entry.get_text()
         games = filter_games(self.games, text)
-        self.game_list.set_games(games)
+        # Liste + grille
+        self._set_game_views(games)
+
         # Caroussel
         if hasattr(self, "recent_carousel"):
             self.recent_carousel.set_games(
@@ -171,9 +288,7 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
                     6
                 )
             )
-        self.status.set_text(
-            f"{len(games)} game(s)"
-        )
+        self.status.set_text(tr("apps_count").format(count=len(games)))
         self.update_stats(games)
 
 
@@ -181,8 +296,8 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
     # DATA
     # -------------------------
     def refresh_games(self):
-        self.status.set_text("Loading games...")
-        self.toast.info("Loading games...")
+        self.status.set_text(tr("loading_apps"))
+        self.toast.info(tr("loading_apps"))
         self.spinner.set_visible(True)
         self.spinner.start()
 
@@ -200,8 +315,8 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
     def _on_refresh_error(self, error_msg):
         self.spinner.stop()
         self.spinner.set_visible(False)
-        self.status.set_text("Erreur de chargement")
-        self.toast.error(f"Échec du chargement des jeux : {error_msg}")
+        self.status.set_text(tr("loading_failed"))
+        self.toast.error(tr("loading_failed_detail").format(error=error_msg))
         return False
 
 
@@ -222,6 +337,8 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
                 "favorite": g.get("favorite", False),
                 "playtime": g.get("playtime", {}),
                 "badges": g.get("badges", []),
+                "app_id": g.get("app_id"),        # 👈 ajouté, Steam APP ID en mémoire
+                "protondb": g.get("protondb"),    # 👈 ajouté, ProtonDB en mémoire
             }
             for g in games
             if isinstance(g, dict)
@@ -233,7 +350,8 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
                 if hasattr(self, "search")
                 else self.games
             )
-            self.game_list.set_games(filtered)
+            #self.game_list.set_games(filtered)
+            self._set_game_views(filtered)
             self.update_stats(filtered)
 
             if hasattr(self, "recent_carousel"):
@@ -242,9 +360,17 @@ class Dashboard(DashboardUIMixin, DashboardDialogsMixin, DashboardActionsMixin, 
                 self.favorites_carousel.set_games(self.get_favorite_games(self.games, 20))
 
         self.status.set_text(
-            f"{len(self.games)} games installed" if self.games else "No games found"
+            tr("apps_installed").format(count=len(self.games))
+            if self.games else tr("no_apps_found")
         )
         self.status.add_css_class("label-bottom")
+
+        # Check System Status :
+        threading.Thread(
+            target=self._check_system_status,
+            daemon=True
+        ).start()
+
         return False
 
 
@@ -404,6 +530,53 @@ class ProtonAutogenApp(Gtk.Application):
         requis.connect("activate", open_requis)
         self.add_action(requis)
 
+        # SETTINGS
+        settings = Gio.SimpleAction.new("settings", None)
+
+        def open_settings(*a):
+            win = self.get_active_window()
+            if win:
+                win.show_settings_dialog()
+
+        settings.connect("activate", open_settings)
+        self.add_action(settings)
+
+        # -------------------------
+        # ZOOM VUE GRILLE (icônes)
+        # -------------------------
+        grid_zoom_in = Gio.SimpleAction.new("grid-zoom-in", None)
+
+        def on_grid_zoom_in(*a):
+            win = self.get_active_window()
+            if win and hasattr(win, "game_grid"):
+                win.game_grid.zoom_in()
+
+        grid_zoom_in.connect("activate", on_grid_zoom_in)
+        self.add_action(grid_zoom_in)
+
+        grid_zoom_out = Gio.SimpleAction.new("grid-zoom-out", None)
+
+        def on_grid_zoom_out(*a):
+            win = self.get_active_window()
+            if win and hasattr(win, "game_grid"):
+                win.game_grid.zoom_out()
+
+        grid_zoom_out.connect("activate", on_grid_zoom_out)
+        self.add_action(grid_zoom_out)
+
+        # -------------------------
+        # RACCOURCIS CLAVIER (fenêtre récapitulative)
+        # -------------------------
+        shortcuts = Gio.SimpleAction.new("shortcuts", None)
+
+        def open_shortcuts(*a):
+            win = self.get_active_window()
+            if win and hasattr(win, "show_shortcuts_window"):
+                win.show_shortcuts_window()
+
+        shortcuts.connect("activate", open_shortcuts)
+        self.add_action(shortcuts)
+
 
         # -------------------------
         # SHORTCUTS
@@ -415,6 +588,26 @@ class ProtonAutogenApp(Gtk.Application):
         self.set_accels_for_action("app.requis", ["F4"])
         self.set_accels_for_action("app.aboutproton", ["F5"])
         self.set_accels_for_action("app.about", ["F6"])
+        self.set_accels_for_action("app.settings", ["<Ctrl>comma"])
+
+        # <Ctrl>plus nécessite Shift sur la plupart des dispositions
+        # clavier (le "+" partage sa touche avec "="); <Ctrl>equal et le
+        # pavé numérique (<Ctrl>KP_Add) sont ajoutés pour que le
+        # raccourci fonctionne sans avoir à jongler avec Shift.
+        self.set_accels_for_action(
+            "app.grid-zoom-in", ["<Ctrl>plus", "<Ctrl>equal", "<Ctrl>KP_Add"]
+        )
+        self.set_accels_for_action(
+            "app.grid-zoom-out", ["<Ctrl>minus", "<Ctrl>KP_Subtract"]
+        )
+
+        # Convention GNOME standard pour "afficher les raccourcis
+        # clavier" : Ctrl+? (Ctrl+Maj+/ sur la plupart des dispositions)
+        # et Ctrl+/ directement pour les dispositions où le point
+        # d'interrogation n'est pas accessible sans modificateur en plus.
+        self.set_accels_for_action(
+            "app.shortcuts", ["<Ctrl>question", "<Ctrl>slash"]
+        )
 
 
 def start_dashboard():

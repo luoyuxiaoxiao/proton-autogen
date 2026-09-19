@@ -3,8 +3,8 @@
 ![Python](https://img.shields.io/badge/python-3.x-yellow)
 ![GitHub release](https://img.shields.io/github/v/release/N3oRay/proton-autogen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Build](https://github.com/N3oRay/proton-autogen/actions/workflows/arch-package.yml/badge.svg)
-![Debian Package](https://github.com/N3oRay/proton-autogen/actions/workflows/package.yml/badge.svg)
+![Test](https://github.com/N3oRay/proton-autogen/actions/workflows/tests.yml/badge.svg)
+![Debian/ARCH Package](https://github.com/N3oRay/proton-autogen/actions/workflows/package.yml/badge.svg)
 ![Downloads](https://img.shields.io/github/downloads/N3oRay/proton-autogen/total)
 
 **Proton-autogen automatically creates and configures Proton environments for Windows games and applications, applying optimized settings for the best compatibility.**
@@ -15,7 +15,7 @@ Run Windows executables through Proton with zero Steam configuration.
 ---
 🎬 Quick Demo
 <p align="left">
-  <img src="docs/screenshots/v3.1.4.jpg" width="445" alt="Proton-Autogen Demo">
+  <img src="docs/screenshots/v3.1.4.jpg" width="350" alt="Proton-Autogen Demo">
   <img src="docs/screenshots/demo.gif" width="550" alt="Proton-Autogen Demo">
 </p>
 
@@ -99,16 +99,24 @@ Latest releases are available on GitHub:
 
 - Debian / Ubuntu: `.deb` package
 - Source installation: `install.sh`
-- Arch Linux / CachyOS: AUR (coming soon)
+- Arch Linux / CachyOS: AUR
 
 
 ## 📦 Installation & Updates
+
+###📦 **Arch Linux / CachyOS users:** Proton-Autogen is now available on the AUR.
+
+Install it with:
+
+ ```bash
+ paru -S proton-autogen
+ ```
+
 
 ### Ubuntu / Linux Mint / Pop!_OS (Recommended)
 
 The recommended installation method is the official Proton-Autogen PPA:
 
-For Arch Linux and CachyOS, a native package is planned.
 Until then, the manual installer is available.
 
 ### Recommended installation (Ubuntu / Linux Mint / Pop!_OS)
@@ -142,13 +150,27 @@ Review the installer before running it
 ```bash
 less install.sh
 ```
-### (install manual)
+### Install manual  (Arch,Endeavouros,Cachyos,Garuda,Manjaro,Arcolinux,Rebornos,Debian,Ubuntu,Linuxmint,Pop,Elementary,Zorin,Fedora,Nobara)
 ```bash
 git clone https://github.com/N3oRay/proton-autogen.git
 cd proton-autogen
 chmod +x install.sh
 ./install.sh
 ```
+This installs:
+
+* `/usr/bin/proton-autogen`
+* Integrated with Nemo (Cinnamon), Nautilus (GNOME), and Dolphin (KDE Plasma).
+
+
+## Flatpak
+
+Proton-Autogen is also available as a Flatpak.
+
+For installation from source, see:
+
+[Flatpak installation guide](INSTALL_FLATPAK.md)
+
 
 
 ### Config
@@ -157,12 +179,6 @@ The configuration is fully automatic.
 cat ~/.config/proton-autogen/proton-autogen.conf
 ls ~/.config/proton-autogen/games
 ```
-
-
-This installs:
-
-* `/usr/bin/proton-autogen`
-* Integrated with Nemo (Cinnamon), Nautilus (GNOME), and Dolphin (KDE Plasma).
 
 ---
 
@@ -260,20 +276,29 @@ nautilus -q
 - [x] Configuration file support
 - [x] Game / Installer auto-detection
 - [x] GUI frontend
-
-### Gaming integrations
-
-- [x] Lutris profile export
-- [ ] Lutris profile import
-- [ ] Bottles profile import/export
-- [x] Sensors and MangoHud support
-- [x] Gamescope integration
+- [x] Memory — Save Management:system to manage, and preserve game saves/data.
+- [x] System Monitor
+- [ ] System Optimizer
 
 ### Automation
 
-- [ ] ProtonDB integration
-- [ ] Automatic dependency installation (.NET, VC++, DirectX...)
+- [x] ProtonDB integration
+- [x] Automatic dependency installation (.NET, .NET C#)
+- [ ] Automatic dependency installation (VC++, VB, ...)
 - [ ] Silent mode
+
+### Gaming integrations
+
+- [x] Lutris, Bottles, Heroic profile import
+- [x] Lutris profile export
+- [ ] Bottles profile export
+- [x] Sensors and MangoHud support
+- [x] Gamescope integration
+
+### Accessibility
+
+- [x] Accessibility improvements
+
 
 ---
 
@@ -320,12 +345,13 @@ Actively maintained and used by Linux users, with regular releases and ongoing i
 </sub>
 
 ```markdown
+Community baseline — August 2026
 📦 Clones             ████████████████████  2,091
 👥 Unique cloners     ████████              509
 👀 Views              ██████                393
 🌍 Unique visitors    ██                    157
 Ubuntu PPA
-📥 Downloads █████████████████████  301
+📥 Downloads █████████████████████  483 package downloads (31 versions)
 ```
 <sub>
 Launchpad downloads represent PPA package downloads, not unique users.

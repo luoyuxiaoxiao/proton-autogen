@@ -11,6 +11,7 @@ from time import perf_counter
 from proton_autogen.config import VERSION, load_proton_paths
 from proton_autogen.utils.logger import StructuredLogger
 from proton_autogen.progress import Progress
+from proton_autogen.utils.steam_appid import detect_steam_appid
 
 from proton_autogen.loader import save_game_config, load_game_config
 from proton_autogen.core import (
@@ -21,6 +22,7 @@ from proton_autogen.core import (
 
     run_game_proton,
     run_standard,
+    get_prefix_path,
 
     has_mangohud,
     has_gamemode,
@@ -42,6 +44,11 @@ from proton_autogen.dector import resolve_game_features
 from proton_autogen.system import detect_system_info
 from proton_autogen.session import finalize_session, notifications
 from proton_autogen.proton_call import launch_proton_call
+
+
+from proton_autogen.protondb.cache import ProtonDBCache
+from proton_autogen.protondb.api import ProtonDBAPI
+from proton_autogen.protondb.model import ProtonDBInfo
 
 #-------------------------- Init Log -------------------
 logger = StructuredLogger("proton-autogen.backend")
@@ -67,7 +74,7 @@ def print_runtime_info(proton, exe_path, mangohud_available):
     print(f"  {tr('path'):<10}: {proton_path(proton)}")
 
     print(
-        f"  {tr('proton_call'):<10}: ",
+        f"  {tr('proton_call'):<10} ({tr('optional')}): ",
         tr("detected") if has_proton_call() else tr("missing")
     )
 
@@ -240,7 +247,20 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None, 
                     )
             status = handle_result(result_code)
             # Update Stats
-            finalize_session(exe_path, start_time, result_code)
+            game_features = config.get("features", {}) if config else {}
+            try:
+                resolved_prefix_path = get_prefix_path(prefix_mode, exe_path)
+            except Exception:
+                resolved_prefix_path = None
+            finalize_session(
+                exe_path,
+                start_time,
+                result_code,
+                prefix_path=resolved_prefix_path,
+                game_name=config.get("name") if config else None,
+                game_id=game_id,
+                save_backup_enabled=normalize_flag(game_features.get("save_backup_prompt"), True),
+            )
             log_game_stats(exe_path)
             #show_result !
             progress.update( 100, result_to_line(status) )
@@ -254,7 +274,15 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None, 
             result_code = run_standard(exe_path)
             status = handle_result(result_code)
             # Update Stats
-            finalize_session(exe_path, start_time, result_code) # Stats
+            game_features = config.get("features", {}) if config else {}
+            finalize_session(
+                exe_path,
+                start_time,
+                result_code,
+                game_name=config.get("name") if config else None,
+                game_id=game_id,
+                save_backup_enabled=normalize_flag(game_features.get("save_backup_prompt"), True),
+            ) # Stats
             log_game_stats(exe_path)
             #show_result !
             progress.update( 100, result_to_line(status) )
@@ -329,7 +357,7 @@ def get_diagnostic_text():
     lines.append(f"{tr('python'):<12}: {sys.version.split()[0]}\n")
     lines.append(f"{tr('runtime')}:")
     lines.append(
-        f"  {tr('proton_call')} : "
+        f"  {tr('proton_call')} ({tr('optional')}) : "
         f"{tr('yes') if has_proton_call() else tr('no')}"
     )
     lines.append(
@@ -600,6 +628,24 @@ def list_programs():
     for exe in sorted(programs):
         print(exe)
 
+
+def fetch_protondb_info(app_id: str) -> ProtonDBInfo | None:
+    """Version synchrone, à appeler depuis un thread worker (pas le thread GTK)."""
+    cached = ProtonDBCache.get_cached(app_id)
+    data = cached or ProtonDBAPI.get_app_info(app_id)
+
+    if not cached:
+        ProtonDBCache.save(app_id, data)
+
+    # timestamp ne fait pas partie du dataclass
+    data = {k: v for k, v in data.items() if k != "timestamp"}
+
+    try:
+        return ProtonDBInfo(**data)
+    except TypeError as e:
+        logger.debug("ProtonDB schema mismatch for %s: %s", app_id, e)
+        return None
+
 def list_programs_ux(lang: str = "en"):
     programs = find_windows_programs_ux()
 
@@ -610,11 +656,20 @@ def list_programs_ux(lang: str = "en"):
 
     for exe in sorted(programs):
         config = load_game_config(exe) or {}
+        app_id = config.get("app_id") or detect_steam_appid(exe, fallback=False)
+
+        protondb_data = config.get("protondb")
+        protondb = None
+        if isinstance(protondb_data, dict):
+            try:
+                protondb = ProtonDBInfo(**protondb_data)
+            except TypeError as e:
+                logger.debug("ProtonDB config schema mismatch for %s: %s", exe, e)
 
         badges = get_game_badges({
             "favorite": config.get("favorite", False),
             "playtime": config.get("playtime", {}),
-        },lang)
+        }, lang)
 
         result.append({
             "name": config.get("name", exe.split("/")[-1]),
@@ -630,7 +685,6 @@ def list_programs_ux(lang: str = "en"):
                 "gamescope": False,
             }),
             "env": config.get("env", {}),
-
             "favorite": config.get("favorite", False),
             "playtime": config.get("playtime", {
                 "seconds": 0,
@@ -638,7 +692,9 @@ def list_programs_ux(lang: str = "en"):
                 "last_session": 0,
                 "last_launch": None,
             }),
-            "badges": badges,   # 👈 NEW
+            "badges": badges,
+            "app_id": app_id,
+            "protondb": protondb,   # 👈 reconstruit depuis la config
         })
 
     return result

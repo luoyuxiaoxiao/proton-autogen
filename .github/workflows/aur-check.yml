@@ -1,0 +1,291 @@
+name: AUR Package Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'PKGBUILD'
+      - '.SRCINFO'
+      - 'pyproject.toml'
+      - 'usr/**'
+      - 'debian/**'
+      - '.github/workflows/aur-check.yml'
+
+  pull_request:
+    paths:
+      - 'PKGBUILD'
+      - '.SRCINFO'
+      - 'pyproject.toml'
+      - 'usr/**'
+      - 'debian/**'
+      - '.github/workflows/aur-check.yml'
+
+  workflow_dispatch:
+
+jobs:
+  aur-check:
+    name: Build and validate AUR package
+    runs-on: ubuntu-latest
+
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update Arch Linux
+        run: |
+          pacman -Syu --noconfirm
+
+      - name: Install packaging tools
+        run: |
+          pacman -S --needed --noconfirm \
+            base-devel \
+            git \
+            namcap \
+            python \
+            python-build \
+            python-installer \
+            python-setuptools \
+            python-wheel \
+            sudo
+
+      - name: Create build user
+        run: |
+          useradd \
+            --create-home \
+            --shell /bin/bash \
+            builder
+
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+          cat > /etc/sudoers.d/builder-pacman <<'EOF'
+          builder ALL=(root) NOPASSWD: /usr/bin/pacman
+          EOF
+
+          chmod 440 /etc/sudoers.d/builder-pacman
+
+      - name: Check PKGBUILD syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          bash -n PKGBUILD
+
+          echo "PKGBUILD syntax: OK"
+
+      - name: Validate PKGBUILD
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          namcap PKGBUILD
+
+      - name: Verify source URL
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! grep -q 'archive/refs/tags/v${pkgver}.tar.gz' PKGBUILD; then
+            echo "ERROR: PKGBUILD source does not use v\${pkgver}.tar.gz."
+            exit 1
+          fi
+
+          echo "Source URL: OK"
+
+      - name: Verify source checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! grep -q '^sha256sums=' PKGBUILD; then
+            echo "ERROR: sha256sums is missing from PKGBUILD."
+            exit 1
+          fi
+
+          echo "sha256sums: present"
+
+      - name: Check actual source checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          su builder -c '
+            cd "$GITHUB_WORKSPACE"
+            makepkg --verifysource --nobuild
+          ' || true
+
+          echo
+          echo "=== PKGBUILD checksum ==="
+          grep '^sha256sums=' PKGBUILD
+
+          echo
+          echo "=== Downloaded source checksums ==="
+          find /home/builder/.cache -type f -name '*.tar.gz' \
+            -exec sha256sum {} \; 2>/dev/null || true
+
+
+      - name: Regenerate .SRCINFO
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          su builder -c \
+            'cd "$GITHUB_WORKSPACE" && makepkg --printsrcinfo' \
+            > .SRCINFO.generated
+
+      - name: Compare .SRCINFO
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          diff -u .SRCINFO .SRCINFO.generated
+
+          echo ".SRCINFO: synchronized with PKGBUILD"
+
+      - name: Build package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          su builder -c '
+            cd "$GITHUB_WORKSPACE"
+
+            makepkg \
+              --clean \
+              --syncdeps \
+              --noconfirm
+          '
+
+      - name: Find generated package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE=$(find . -maxdepth 1 -type f -name '*.pkg.tar.*' -print -quit)
+
+          if [[ -z "$PACKAGE" ]]; then
+            echo "ERROR: No package was generated."
+            exit 1
+          fi
+
+          echo "Generated package:"
+          ls -lh "$PACKAGE"
+
+      - name: Validate built package with namcap
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE=$(find . -maxdepth 1 -type f -name '*.pkg.tar.*' -print -quit)
+
+          namcap "$PACKAGE"
+
+      - name: Inspect package contents
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE=$(find . -maxdepth 1 -type f -name '*.pkg.tar.*' -print -quit)
+
+          echo "Package contents:"
+          pacman -Qlp "$PACKAGE"
+
+      - name: Verify required files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE=$(find . -maxdepth 1 -type f -name '*.pkg.tar.*' -print -quit)
+
+          REQUIRED_FILES=(
+            '/usr/bin/proton-autogen'
+            '/usr/share/applications/proton-autogen.desktop'
+            '/usr/share/man/man1/proton-autogen.1.gz'
+            '/usr/share/licenses/proton-autogen/LICENSE'
+          )
+
+          for file in "${REQUIRED_FILES[@]}"; do
+            if ! pacman -Qlp "$PACKAGE" | grep -q "${file}$"; then
+              echo "ERROR: Missing required file: $file"
+              exit 1
+            fi
+
+            echo "Found: $file"
+          done
+
+          echo "Required files: OK"
+
+      - name: Install built package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PACKAGE=$(find . -maxdepth 1 -type f -name '*.pkg.tar.*' -print -quit)
+
+          pacman -U --noconfirm "$PACKAGE"
+
+      - name: Verify installed files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== Package database ==="
+          pacman -Ql proton-autogen
+
+          echo
+          echo "=== Package metadata ==="
+          pacman -Qi proton-autogen
+
+          echo
+          echo "=== Executable ==="
+          test -x /usr/bin/proton-autogen
+          echo "OK: /usr/bin/proton-autogen"
+
+          echo
+          echo "=== Desktop entry ==="
+          test -f /usr/share/applications/proton-autogen.desktop
+          echo "OK: /usr/share/applications/proton-autogen.desktop"
+
+          echo
+          echo "=== License ==="
+          test -f /usr/share/licenses/proton-autogen/LICENSE
+          echo "OK: /usr/share/licenses/proton-autogen/LICENSE"
+
+          echo
+          echo "=== Man page ==="
+          if pacman -Ql proton-autogen | grep -q '/usr/share/man/man1/proton-autogen.1.gz$'; then
+            echo "OK: man page is registered in package database"
+          else
+            echo "ERROR: man page is not registered in package"
+            exit 1
+          fi
+
+          echo
+          echo "Installed files: OK"
+
+      - name: Verify executable
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          proton-autogen --help
+
+      - name: Verify Python module
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python -c "import proton_autogen; print(proton_autogen)"
+
+      - name: Verify package ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pacman -Qo /usr/bin/proton-autogen
+          pacman -Qo /usr/share/applications/proton-autogen.desktop
+          pacman -Qo /usr/share/man/man1/proton-autogen.1.gz
+          pacman -Qo /usr/share/licenses/proton-autogen/LICENSE
