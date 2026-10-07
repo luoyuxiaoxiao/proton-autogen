@@ -26,6 +26,8 @@ jobs:
       - name: Merge upstream main
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/N3oRay/proton-autogen.git 2>/dev/null || true
           git fetch upstream --tags
           git checkout main
