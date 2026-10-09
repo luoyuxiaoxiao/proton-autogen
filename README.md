@@ -8,6 +8,7 @@
 ![Downloads](https://img.shields.io/github/downloads/N3oRay/proton-autogen/total)
 
 **Proton-autogen automatically creates and configures Proton environments for Windows games and applications, applying optimized settings for the best compatibility.**
+
 **Proton-autogen is a lightweight Proton/Wine orchestration layer that allows Linux users to run Windows applications from `.exe` files without manually managing Steam shortcuts or Wine prefixes.**
 
 
@@ -356,3 +357,11 @@ Ubuntu PPA
 <sub>
 Launchpad downloads represent PPA package downloads, not unique users.
 </sub>
+
+## ❤️ Support Proton-Autogen
+
+Proton-Autogen is free and open source. Your support helps me continue development, improve compatibility, and maintain the project.
+
+☕  [Support me on Ko-fi](https://ko-fi.com/n3oray)
+
+Thank you! ❤️
