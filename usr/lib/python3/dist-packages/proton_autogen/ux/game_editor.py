@@ -3,14 +3,16 @@
 import gi
 import os
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk
 
+from proton_autogen.profiles.def_env import ENV_VARS_BY_NAME
 
 from proton_autogen.backend import save_game_config
 from proton_autogen.backend import find_all_protons
 from proton_autogen.desc import set_tooltip
 from proton_autogen.editor import list_prefixes_ux
 from proton_autogen.profiles.init import VALID_PROFILES
+from proton_autogen.i18n import tr
 
 # Valeur par défaut appliquée quand MangoHud est activé sans fps_limit défini
 DEFAULT_FPS_LIMIT = 60
@@ -31,6 +33,8 @@ class GameEditor(Gtk.Window):
         self.set_default_size(520, 420)
         #self.set_resizable(True)
         self.on_saved = None
+        self.on_protondb_requested = None   # 👈 nouveau
+        self.on_memory_requested = None     # 👈 ouvre le gestionnaire de sauvegardes
         self.set_size_request(520, 420)
         self.add_css_class("editor-window")
         self.profile_model = VALID_PROFILES
@@ -118,12 +122,42 @@ class GameEditor(Gtk.Window):
         root.append(self._row("Prefix", self.prefix))
 
         # -------------------------
+        # STEAM APP ID + PROTONDB (même ligne)
+        # -------------------------
+        self.app_id_entry = Gtk.Entry()
+        self.app_id_entry.set_placeholder_text(tr("app_id_placeholder"))
+        self.app_id_entry.set_max_length(10)
+        self.app_id_entry.set_width_chars(10)
+        #self.app_id_entry.set_hexpand(True)
+        self.app_id_entry.set_text(str(self.game.get("app_id", "") or ""))
+        set_tooltip(self.app_id_entry, "app_id", self.lang)
+        self.app_id_entry.connect("changed", self._on_app_id_changed)
+
+        self.protondb_btn = Gtk.Button(label="📊 ProtonDB")
+        #self.protondb_btn.add_css_class("suggested-action")
+        self.protondb_btn.add_css_class("section-toggle")
+        self.protondb_btn.connect("clicked", self.on_show_protondb)
+
+        app_id_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        app_id_label = Gtk.Label(label="Steam AppID", xalign=0)
+        app_id_label.set_width_chars(12)
+        app_id_label.add_css_class("form-label")
+
+        app_id_row.append(app_id_label)
+        app_id_row.append(self.app_id_entry)
+        app_id_row.append(self.protondb_btn)
+        root.append(app_id_row)
+
+        # État initial : bouton visible seulement si un AppID est déjà renseigné
+        self._on_app_id_changed(self.app_id_entry)
+
+        # -------------------------
         # TOGGLES
         # -------------------------
         features = self.game.get("features", {})
 
         # FAVORITE
-        self.favorite = Gtk.CheckButton(label="Add to favorites")
+        self.favorite = Gtk.CheckButton(label=tr("add_to_favorites"))
         self.favorite.add_css_class("feature-toggle")
         self.favorite.set_active(
             self.game.get("favorite", False)
@@ -131,7 +165,7 @@ class GameEditor(Gtk.Window):
 
         set_tooltip(self.favorite, "favorite", self.lang)
         # MANGO
-        self.mangohud = Gtk.CheckButton(label="Enable MangoHud")
+        self.mangohud = Gtk.CheckButton(label=tr("enable_mangohud"))
         self.mangohud.add_css_class("feature-toggle")
         self.mangohud.set_active(features.get("mangohud", False))
         set_tooltip(self.mangohud, "mangohud", self.lang)  #new code
@@ -155,16 +189,67 @@ class GameEditor(Gtk.Window):
         self.fps_limit_row = self._row("FPS limit", self.fps_limit)
         self.fps_limit_row.set_sensitive(self.mangohud.get_active())
         # GAMEMODE
-        self.gamemode = Gtk.CheckButton(label="Enable GameMode")
+        self.gamemode = Gtk.CheckButton(label=tr("enable_gamemode"))
         self.gamemode.add_css_class("feature-toggle")
         self.gamemode.set_active(features.get("gamemode", False))
         set_tooltip(self.gamemode, "gamemode", self.lang) #new code
         # GAMESCOPE
-        self.gamescope = Gtk.CheckButton(label="Enable GameScope")
+        self.gamescope = Gtk.CheckButton(label=tr("enable_gamescope"))
         self.gamescope.add_css_class("feature-toggle")
         self.gamescope.set_active(features.get("gamescope", False))
         set_tooltip(self.gamescope, "gamescope", self.lang)
 
+        # INHIBIT SLEEP (verrou anti-veille) — n'a d'effet que si le
+        # mode global (Réglages > Comportement) est réglé sur
+        # "Par jeu" ; sinon "Jamais"/"Toujours" prime sur ce toggle.
+        self.inhibit_sleep = Gtk.CheckButton(
+            label=tr("enable_inhibit_sleep") or "Empêcher la mise en veille"
+        )
+        self.inhibit_sleep.add_css_class("feature-toggle")
+        self.inhibit_sleep.set_active(features.get("inhibit_sleep", False))
+        self.inhibit_sleep.set_tooltip_text(
+            tr("inhibit_sleep_tooltip")
+            or "Empêche l'écran de s'éteindre et la mise en veille pendant "
+               "que ce jeu tourne. N'a d'effet que si le mode global "
+               "(Réglages > Comportement) est réglé sur « Par jeu »."
+        )
+
+        # SAVE BACKUP PROMPT (détection de sauvegardes en fin de session)
+        # Activé par défaut : contrairement à inhibit_sleep, c'est une
+        # fonctionnalité de protection des données, pas une préférence de
+        # confort — on préfère prévenir l'utilisateur par défaut et le
+        # laisser désactiver au cas par cas.
+        self.save_backup_prompt = Gtk.CheckButton(
+            label=tr("enable_save_backup_prompt") or "Proposer une sauvegarde en fin de partie"
+        )
+        self.save_backup_prompt.add_css_class("feature-toggle")
+        self.save_backup_prompt.set_active(features.get("save_backup_prompt", True))
+        self.save_backup_prompt.set_tooltip_text(
+            tr("save_backup_prompt_tooltip")
+            or "À la fermeture du jeu, proton-autogen détecte si les "
+               "fichiers de sauvegarde ont changé et propose de les "
+               "sauvegarder. Désactivez si ce jeu ne sauvegarde pas de "
+               "façon détectable ou si vous ne voulez pas être sollicité."
+        )
+
+        # MEMORY (bouton) — ouvre immédiatement le gestionnaire de
+        # sauvegardes pour ce jeu : backup manuel + historique des
+        # sauvegardes précédentes. Volontairement à côté du toggle
+        # ci-dessus : l'un contrôle la détection automatique en fin de
+        # partie, l'autre donne un accès direct et à la demande.
+        self.memory_btn = Gtk.Button(label=tr("memory_button") or "🧠 Memory")
+        self.memory_btn.add_css_class("section-toggle")
+        self.memory_btn.set_tooltip_text(
+            tr("memory_button_tooltip")
+            or "Ouvre le gestionnaire de sauvegardes de ce jeu : "
+               "sauvegarder maintenant ou retrouver vos sauvegardes "
+               "précédentes."
+        )
+        self.memory_btn.connect("clicked", self._on_memory_clicked)
+
+        save_backup_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        save_backup_row.append(self.save_backup_prompt)
+        save_backup_row.append(self.memory_btn)
 
         # -------------------------
         # GPU MODE
@@ -185,11 +270,13 @@ class GameEditor(Gtk.Window):
         root.append(self.fps_limit_row)
         root.append(self.gamemode)
         root.append(self.gamescope)
+        root.append(self.inhibit_sleep)
+        root.append(save_backup_row)
 
         # -------------------------
         # CUSTOM ENVIRONMENT VARIABLES
         # -------------------------
-        env_label = Gtk.Label(label="Custom environment variables (KEY=VALUE, one per line)", xalign=0)
+        env_label = Gtk.Label(label=tr("custom_env_label"), xalign=0)
         env_label.add_css_class("form-label")
         root.append(env_label)
 
@@ -198,6 +285,25 @@ class GameEditor(Gtk.Window):
 
         self.env_buffer = Gtk.TextBuffer()
         self.env_buffer.set_text(env_text)
+
+        # ---------------------------------------------------------
+        # CUSTOM ENVIRONMENT VARIABLES - SYNTAX HIGHLIGHTING
+        # ---------------------------------------------------------
+
+        # Variable connue dans ENV_VARS
+        self.env_known_tag = self.env_buffer.create_tag(
+            "env-known",
+            foreground="#78A9FF",
+        )
+
+        self.env_buffer.connect(
+            "changed",
+            self._highlight_custom_env,
+        )
+
+        # Première coloration
+        self._highlight_custom_env(self.env_buffer)
+
 
         self.env_view = Gtk.TextView(buffer=self.env_buffer)
         self.env_view.add_css_class("editor-env-view")
@@ -218,21 +324,111 @@ class GameEditor(Gtk.Window):
         # -------------------------
         # SAVE BUTTON
         # -------------------------
-        save_btn = Gtk.Button(label="Save configuration")
+        save_btn = Gtk.Button(label=tr("save_configuration"))
         save_btn.add_css_class("suggested-action")
         save_btn.connect("clicked", self.on_save)
 
         root.append(save_btn)
 
     # -------------------------
+    # SHOW PROTONDB
+    # -------------------------
+    def on_show_protondb(self, btn):
+        app_id = self.app_id_entry.get_text().strip() or self.game.get("app_id")
+        if not app_id:
+            return
+
+        # Peuple game["protondb"] (thread + cache, côté Dashboard) pour
+        # que le badge apparaisse dans la liste au prochain refresh.
+        if self.on_protondb_requested:
+            self.on_protondb_requested(self.game)
+
+        Gtk.UriLauncher(uri=f"https://www.protondb.com/app/{app_id}").launch(self, None, None)
+
+    # -------------------------
+    # MEMORY (gestionnaire de sauvegardes)
+    # -------------------------
+    def _on_memory_clicked(self, _btn):
+        if self.on_memory_requested:
+            self.on_memory_requested(self.game)
+
+    # -------------------------
     # MANGOHUD / FPS LIMIT
     # -------------------------
     def on_mangohud_toggled(self, checkbutton):
         self.fps_limit_row.set_sensitive(checkbutton.get_active())
+    # -------------------------
+    # PROTONDB BOUTON VISIBLE
+    # -------------------------
+    def _on_app_id_changed(self, entry):
+        self.protondb_btn.set_visible(bool(entry.get_text().strip()))
 
     # -------------------------
     # CUSTOM ENV HELPERS
     # -------------------------
+    def _highlight_custom_env(self, buffer: Gtk.TextBuffer) -> None:
+        """
+        Colorie les noms de variables d'environnement connues.
+
+        Une variable présente dans ENV_VARS est affichée avec la couleur
+        env-known. Les variables inconnues utilisent env-unknown.
+        """
+        start = buffer.get_start_iter()
+        end = buffer.get_end_iter()
+
+        # Supprime les anciennes couleurs
+        buffer.remove_tag(
+            self.env_known_tag,
+            start,
+            end,
+        )
+
+        text = buffer.get_text(start, end, False)
+
+        offset = 0
+
+        for raw_line in text.splitlines(True):
+            line = raw_line.rstrip("\r\n")
+
+            if not line.strip() or line.lstrip().startswith("#"):
+                offset += len(raw_line)
+                continue
+
+            if "=" not in line:
+                offset += len(raw_line)
+                continue
+
+            key, _, _ = line.partition("=")
+            key = key.strip()
+
+            if not key:
+                offset += len(raw_line)
+                continue
+
+            # Position réelle du KEY dans le TextBuffer.
+            key_start_offset = offset + (
+                len(key) - len(key.lstrip())
+            )
+
+            key_end_offset = key_start_offset + len(key)
+
+            key_start = buffer.get_iter_at_offset(
+                key_start_offset
+            )
+            key_end = buffer.get_iter_at_offset(
+                key_end_offset
+            )
+
+            if key in ENV_VARS_BY_NAME:
+                buffer.apply_tag(
+                    self.env_known_tag,
+                    key_start,
+                    key_end,
+                )
+
+
+            offset += len(raw_line)
+
     def _existing_custom_env(self) -> dict:
         """Variables d'environnement déjà enregistrées pour ce jeu,
         hors clés réservées."""
@@ -345,6 +541,8 @@ class GameEditor(Gtk.Window):
             "fps_limit": int(self.fps_limit.get_value()),
             "gamemode": self.gamemode.get_active(),
             "gamescope": self.gamescope.get_active(),
+            "inhibit_sleep": self.inhibit_sleep.get_active(),
+            "save_backup_prompt": self.save_backup_prompt.get_active(),
             "gpu": gpu
         })
 
@@ -363,9 +561,18 @@ class GameEditor(Gtk.Window):
             "prefix": {
                 "name": prefix
             },
+            "app_id": self.app_id_entry.get_text().strip() or None,
             "features": features,
             "env": env,
         })
+
+        # "protondb" contient un objet ProtonDBInfo : converti en dict
+        # simple (JSON-sérialisable) avant sauvegarde. list_programs_ux()
+        # le reconstruit en ProtonDBInfo au chargement suivant.
+        protondb = data.get("protondb")
+        if protondb is not None:
+            data["protondb"] = protondb.to_dict() if hasattr(protondb, "to_dict") else protondb
+
 
         save_game_config(data)
 

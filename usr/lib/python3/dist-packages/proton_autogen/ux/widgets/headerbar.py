@@ -6,6 +6,7 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gdk
 
 from proton_autogen.ux.menu import attach_menu
+from proton_autogen.i18n import tr
 
 
 class DashboardHeaderBar(Gtk.HeaderBar):
@@ -15,9 +16,11 @@ class DashboardHeaderBar(Gtk.HeaderBar):
         *,
         on_refresh=None,
         on_add=None,
+        on_import=None,
         on_change_style=None,
         show_refresh=True,
         show_add=True,
+        show_import=True,
     ):
         super().__init__()
 
@@ -28,7 +31,7 @@ class DashboardHeaderBar(Gtk.HeaderBar):
         #
         if show_refresh:
             refresh_btn = Gtk.Button(icon_name="view-refresh-symbolic")
-            refresh_btn.set_tooltip_text("Refresh game list")
+            refresh_btn.set_tooltip_text(tr("refresh_title") or "Refresh Applications list")
 
             if on_refresh:
                 refresh_btn.connect("clicked", on_refresh)
@@ -40,12 +43,27 @@ class DashboardHeaderBar(Gtk.HeaderBar):
         #
         if show_add:
             add_btn = Gtk.Button(label="+")
-            add_btn.add_css_class("suggested-action")
+            add_btn.set_tooltip_text(tr("add_dialog_title") or "Add Applications")
+            add_btn.add_css_class("suggested-action") #add_dialog_title
 
             if on_add:
                 add_btn.connect("clicked", on_add)
 
             self.pack_start(add_btn)
+
+
+        #
+        # Import Game
+        #
+        if show_import:
+            import_btn = Gtk.Button(label="⇩")
+            import_btn.set_tooltip_text(tr("import_dialog_title") or "Import Applications")
+            import_btn.add_css_class("suggested-action")
+
+            if on_import:
+                import_btn.connect("clicked", on_import)
+
+            self.pack_start(import_btn)
 
         #
         # Style
@@ -58,8 +76,7 @@ class DashboardHeaderBar(Gtk.HeaderBar):
             icon = "preferences-system-symbolic"
 
         style_btn = Gtk.Button(icon_name=icon)
-        #style_btn = Gtk.Button( icon_name="applications-graphics-symbolic" )
-        style_btn.set_tooltip_text("Change UI style")
+        style_btn.set_tooltip_text(tr("change_ui_style") or "Change UI style")   #"Modifier le style de l’interface",
         style_btn.add_css_class("app-button")
 
         if on_change_style:

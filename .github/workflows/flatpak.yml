@@ -1,0 +1,117 @@
+name: Build Flatpak
+
+on:
+  release:
+    types: [published]
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  flatpak:
+    name: Build Flatpak
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      options: --privileged
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(grep -oP '(?<=version=")[0-9]+\.[0-9]+\.[0-9]+' \
+              io.github.N3oRay.ProtonAutogen.metainfo.xml | head -1)"
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building Proton Autogen ${VERSION}"
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
+        with:
+          manifest-path: io.github.N3oRay.ProtonAutogen.yml
+          bundle: io.github.N3oRay.ProtonAutogen.flatpak
+          repository-name: flathub
+          repository-url: https://flathub.org/repo/flathub.flatpakrepo
+          cache: true
+          cache-key: flatpak-builder-${{ github.sha }}
+
+      - name: Verify Flatpak bundle
+        run: |
+          echo "Checking Flatpak bundle..."
+
+          test -f io.github.N3oRay.ProtonAutogen.flatpak
+
+          ls -lh io.github.N3oRay.ProtonAutogen.flatpak
+
+          file io.github.N3oRay.ProtonAutogen.flatpak
+
+      - name: Install Flatpak
+        run: |
+          flatpak install \
+            --user \
+            --noninteractive \
+            ./io.github.N3oRay.ProtonAutogen.flatpak
+
+      - name: Verify Flatpak installation
+        run: |
+          flatpak info io.github.N3oRay.ProtonAutogen
+
+      - name: Test Flatpak version
+        run: |
+          flatpak run \
+            io.github.N3oRay.ProtonAutogen \
+            --version
+
+      - name: Test Flatpak help
+        run: |
+          flatpak run \
+            io.github.N3oRay.ProtonAutogen \
+            --help
+
+      - name: List Flatpak installation
+        run: |
+          flatpak info \
+            io.github.N3oRay.ProtonAutogen
+
+      - name: Uninstall Flatpak
+        run: |
+          flatpak uninstall \
+            --user \
+            --noninteractive \
+            io.github.N3oRay.ProtonAutogen
+
+      - name: Verify Flatpak uninstall
+        run: |
+          if flatpak info io.github.N3oRay.ProtonAutogen >/dev/null 2>&1; then
+            echo "ERROR: Flatpak is still installed"
+            exit 1
+          fi
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: proton-autogen-flatpak
+          path: io.github.N3oRay.ProtonAutogen.flatpak
+
+      - name: Upload Flatpak to GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release upload \
+            "${{ github.event.release.tag_name }}" \
+            io.github.N3oRay.ProtonAutogen.flatpak \
+            --clobber

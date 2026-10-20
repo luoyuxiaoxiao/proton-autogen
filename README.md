@@ -1,25 +1,38 @@
-# 🧩 Proton-Autogen
+# 🧩 Proton-Autogen — Run Windows EXE Files on Linux with Proton or Wine
 ![Linux](https://img.shields.io/badge/platform-Linux-blue)
 ![Python](https://img.shields.io/badge/python-3.x-yellow)
 ![GitHub release](https://img.shields.io/github/v/release/N3oRay/proton-autogen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Build](https://github.com/N3oRay/proton-autogen/actions/workflows/arch-package.yml/badge.svg)
-![Debian Package](https://github.com/N3oRay/proton-autogen/actions/workflows/package.yml/badge.svg)
+![Test](https://github.com/N3oRay/proton-autogen/actions/workflows/tests.yml/badge.svg)
+![Debian/ARCH Package](https://github.com/N3oRay/proton-autogen/actions/workflows/package.yml/badge.svg)
 ![Downloads](https://img.shields.io/github/downloads/N3oRay/proton-autogen/total)
 
-**Proton-autogen automatically creates and configures Proton environments for Windows games and applications, applying optimized settings for the best compatibility.**
+Proton-autogen automatically creates and configures Proton environments for Windows games and applications, applying optimized settings for the best compatibility.
+
 **Proton-autogen is a lightweight Proton/Wine orchestration layer that allows Linux users to run Windows applications from `.exe` files without manually managing Steam shortcuts or Wine prefixes.**
 
 
 Run Windows executables through Proton with zero Steam configuration.
 ---
-🎬 Quick Demo
+🎬 Quick Demo - run Windows EXE on Linux
 <p align="left">
-  <img src="docs/screenshots/v3.1.4.jpg" width="445" alt="Proton-Autogen Demo">
   <img src="docs/screenshots/demo.gif" width="550" alt="Proton-Autogen Demo">
 </p>
 
+## ✨ Why Proton-Autogen?
 
+**Run Windows applications on Linux with less setup and fewer manual steps.**
+
+* 🚀 **One-Click Launching** — Launch Windows .exe files directly from your file manager.
+* 🔍 **Automatic Runtime Detection** — Automatically detect available Proton installations and simplify runtime selection.
+* 🎮 **Proton & Wine Support** — Launch Windows applications using Proton or Wine, depending on your configuration.
+* 🖥️ **Desktop Integration** — Seamlessly integrate with Nemo, Nautilus, and Dolphin for a smoother Linux desktop experience.
+* ⚙️ **Custom Launch Profiles** — Configure and manage application-specific launch settings.
+* 🛠️ **Built-in Diagnostics** — Generate diagnostic reports to help troubleshoot launch issues.
+* 🪄 **Less Manual Configuration** — Automate repetitive setup tasks and spend less time configuring your environment.
+* 🐧 **Linux-Native Experience** — Bring Windows application launching into your existing Linux workflow.
+
+**The goal: make launching Windows applications on Linux as simple and convenient as possible.**
 
 ## 🚀 Overview
 
@@ -37,27 +50,12 @@ Simply:
 
 ## ✨ Features
 
-* ▶ Run Windows `.exe` files directly via Proton
-* 🧠 Automatic Proton detection
-* 🚀 Support for Proton-CachyOS, GE-Proton and custom Proton builds
-* 🍷 Wine fallback support
-* 📦 Prefix management
-* 🖱️ File manager integration : Nemo, Nautilus, Dolphin
-* 🎮 Game/application profiles
-* 🖥️ GTK4 graphical interface
-* 🛠️ Diagnostic tools
-* ⚙️ CLI and advanced options
-* 🔧 Lightweight and dependency-minimal
-
 See an example of generated profiles here: [Profile Output Example](docs/profiles.md)
+See more info: [Features](docs/features.md)
 
 ---
 
-## 📸 Screenshots
-
-![Screenshot](https://github.com/N3oRay/proton-autogen/blob/main/docs/screenshots/pics0.jpg)
-
-### Integration
+### Integration - Nautilus, Nemo, Dolphin
 Right-click any Windows executable and select:
 
 ```text
@@ -99,17 +97,23 @@ Latest releases are available on GitHub:
 
 - Debian / Ubuntu: `.deb` package
 - Source installation: `install.sh`
-- Arch Linux / CachyOS: AUR (coming soon)
+- Arch Linux / CachyOS: AUR
 
 
 ## 📦 Installation & Updates
 
+### 📦 **Arch Linux / CachyOS users:** Proton-Autogen is now available on the AUR.
+
+Install it with:
+
+ ```bash
+ paru -S proton-autogen
+ ```
+
+
 ### Ubuntu / Linux Mint / Pop!_OS (Recommended)
 
-The recommended installation method is the official Proton-Autogen PPA:
-
-For Arch Linux and CachyOS, a native package is planned.
-Until then, the manual installer is available.
+The recommended installation method is the official Proton-Autogen PPA.
 
 ### Recommended installation (Ubuntu / Linux Mint / Pop!_OS)
 
@@ -134,21 +138,41 @@ dpkg-buildpackage -b -us -uc
 sudo apt install ../proton-autogen_*.deb
 ```
 
-### See the manual installation guide:
-[Installation Guide](docs/install.md)
-
+### See the manual :
+#### Installation guide:
+[Install Guide](docs/install.md)
 
 Review the installer before running it
 ```bash
 less install.sh
 ```
-### (install manual)
+
+#### Uninstallation guide:
+[Uninstall Guide](docs/uninstall.md)
+
+
+
+### Install manual  (Arch,Endeavouros,Cachyos,Garuda,Manjaro,Arcolinux,Rebornos,Debian,Ubuntu,Linuxmint,Pop,Elementary,Zorin,Fedora,Nobara)
 ```bash
 git clone https://github.com/N3oRay/proton-autogen.git
 cd proton-autogen
 chmod +x install.sh
 ./install.sh
 ```
+This installs:
+
+* `/usr/bin/proton-autogen`
+* Integrated with Nemo (Cinnamon), Nautilus (GNOME), and Dolphin (KDE Plasma).
+
+
+## Flatpak
+
+Proton-Autogen is also available as a Flatpak.
+
+For installation from source, see:
+
+[Flatpak installation guide](docs/INSTALL_FLATPAK.md)
+
 
 
 ### Config
@@ -157,12 +181,6 @@ The configuration is fully automatic.
 cat ~/.config/proton-autogen/proton-autogen.conf
 ls ~/.config/proton-autogen/games
 ```
-
-
-This installs:
-
-* `/usr/bin/proton-autogen`
-* Integrated with Nemo (Cinnamon), Nautilus (GNOME), and Dolphin (KDE Plasma).
 
 ---
 
@@ -183,12 +201,10 @@ Supported locations:
 
 ### Optional
 
-- GameMode
-- MangoHud
-- GameScope
-- Proton-CachyOS
-- GE-Proton
+- GameMode - MangoHud - GameScope
+- Proton-CachyOS / GE-Proton
 - ProtonUp-Qt
+  
 ```bash
 sudo apt install gamemode mangohud
 ```
@@ -206,43 +222,6 @@ No Steam shortcut creation is required.
 
 ---
 
-## 🗑️ Uninstallation
-
-### Remove Package
-
-```bash
-sudo apt remove proton-autogen
-```
-
-### Full Cleanup
-
-```bash
-sudo apt purge proton-autogen
-```
-
-### Manual Cleanup
-
-```bash
-chmod +x ./uninstall.sh
-./uninstall.sh
-```
-The uninstall script only removes Proton-Autogen files and configuration.
-It does not remove Steam, Proton versions, or existing Wine prefixes.
-
-Restart Nemo:
-
-```bash
-nemo -q
-```
-
-Restart Nautilus:
-
-```bash
-nautilus -q
-```
-
----
-
 ## 🚧 Known Limitations
 
 * Not every Windows application works under Proton
@@ -253,27 +232,7 @@ nautilus -q
 ---
 
 ## 🛣️ Roadmap
-### Core features
-
-- [x] Per-application profiles
-- [x] Advanced prefix control (Steam compatdata integration)
-- [x] Configuration file support
-- [x] Game / Installer auto-detection
-- [x] GUI frontend
-
-### Gaming integrations
-
-- [x] Lutris profile export
-- [ ] Lutris profile import
-- [ ] Bottles profile import/export
-- [x] Sensors and MangoHud support
-- [x] Gamescope integration
-
-### Automation
-
-- [ ] ProtonDB integration
-- [ ] Automatic dependency installation (.NET, VC++, DirectX...)
-- [ ] Silent mode
+[Roadmap Docs](docs/roadmap.md)
 
 ---
 
@@ -283,50 +242,31 @@ Bug reports, feature requests, and contributions are welcome.
 
 Please use GitHub Issues for discussions and reports.
 
-
-## 💡 Philosophy
-
-Linux gaming is powerful but often fragmented.
-
-Proton-Autogen aims to reduce friction by turning Proton into a transparent execution layer rather than a manually configured tool.
-
-The goal is simple:
-
-> Right-click → Run Windows application → It just works.
-
 ---
 
 ## 👤 Author
 
 **N3oray**
-
-![Screenshot](https://www.fflmpics.fr/images/2026/06/15/n3oray.png)
-
+<p align="left">
+  <img src="docs/screenshots/neoray.png" width="271" alt="Proton-Autogen Demo">
+</p>
 GitHub: [@N3oRay](https://github.com/N3oRay)
 
 ---
 
 ## 📜 License
 
-This project is licensed under the MIT License.
-
-See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 
 ## 📈 Project Activity
 
-<sub>
-Actively maintained and used by Linux users, with regular releases and ongoing improvements.
-</sub>
+[Activity info](docs/activity.md)
 
-```markdown
-📦 Clones             ████████████████████  2,091
-👥 Unique cloners     ████████              509
-👀 Views              ██████                393
-🌍 Unique visitors    ██                    157
-Ubuntu PPA
-📥 Downloads █████████████████████  301
-```
-<sub>
-Launchpad downloads represent PPA package downloads, not unique users.
-</sub>
+## ❤️ Support Proton-Autogen
+
+[Proton-Autogen is free and open source. Your support helps me continue development, improve compatibility, and maintain the project.](docs/SPONSORING.md)
+
+☕  [Support me on Ko-fi](https://ko-fi.com/n3oray)
+
+Thank you! ❤️
