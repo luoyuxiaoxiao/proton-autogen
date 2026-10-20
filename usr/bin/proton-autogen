@@ -3,7 +3,7 @@
 import sys
 
 from proton_autogen.config import VERSION
-from proton_autogen.core import USER_PROFILE, USER_PROFILE_DATA
+import proton_autogen.core as core
 
 from proton_autogen.backend import (
     run,

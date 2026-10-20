@@ -13,11 +13,10 @@ from proton_autogen.utils.logger import StructuredLogger
 from proton_autogen.progress import Progress
 
 from proton_autogen.loader import save_game_config, load_game_config
+import proton_autogen.core as core
 from proton_autogen.core import (
     DEBUG,
     VERBOSE,
-    USER_PROFILE,
-    USER_PROFILE_DATA,
 
     run_game_proton,
     run_standard,
@@ -135,8 +134,8 @@ def run(exe_path: str, launch_mode="proton", prefix_mode="main", progress=None, 
         if not exe_type:
             exe_type = detect_exe_type(exe_path)
         #---------------------------------------Mode PRO -------------------------
-        if USER_PROFILE_DATA:
-            exe_type = USER_PROFILE_DATA.get("base") or USER_PROFILE_DATA.get("name") or exe_type
+        if core.USER_PROFILE_DATA:
+            exe_type = core.USER_PROFILE_DATA.get("base") or core.USER_PROFILE_DATA.get("name") or exe_type
         #-------------------------------------------------------------------------
 
         if config:
